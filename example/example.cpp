@@ -3,6 +3,21 @@
 #include <string>
 
 namespace example {
+void severities_example();
+void datatypes_example();
+void tag_example();
+}
+
+int main()
+{
+    example::severities_example();
+    example::datatypes_example();
+    example::tag_example();
+
+    return 0;
+}
+
+namespace example {
 
 void severities_example()
 {
@@ -32,11 +47,3 @@ void datatypes_example()
 }
 
 } // namespace example
-
-int main()
-{
-    example::severities_example();
-    example::datatypes_example();
-
-    return 0;
-}
