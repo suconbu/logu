@@ -5,7 +5,8 @@
 namespace example {
 void severities_example();
 void datatypes_example();
-void tag_example();
+void severityfilter_example();
+void tagfilter_example();
 void disable_example();
 }
 
@@ -13,7 +14,8 @@ int main()
 {
     example::severities_example();
     example::datatypes_example();
-    example::tag_example();
+    example::severityfilter_example();
+    example::tagfilter_example();
     example::disable_example();
 
     return 0;
@@ -23,6 +25,8 @@ namespace example {
 
 void severities_example()
 {
+    std::cout << "========== " << __func__ << " ==========" << std::endl;
+
     // No need to add "std::endl" to the end of line.
     CLOG_DEBUG << "debug debug debug";
     CLOG_INFO << "info info info";
@@ -35,6 +39,8 @@ void severities_example()
 
 void datatypes_example()
 {
+    std::cout << "========== " << __func__ << " ==========" << std::endl;
+
     CLOG << 1;
     CLOG << 0xFFFFu;
     CLOG << 3.141592653589793;

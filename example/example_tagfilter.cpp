@@ -18,8 +18,10 @@ namespace tags {
     constexpr const char* longtag = "The quick brown fox jumps over the lazy dog";
 }
 
-void tag_example()
+void tagfilter_example()
 {
+    std::cout << "========== " << __func__ << " ==========" << std::endl;
+
     CLOG_DEBUG_("example") << "debug debug debug";
     CLOG_INFO_("example") << "info info info";
     CLOG_WARN_("example") << "warning warning warning";
