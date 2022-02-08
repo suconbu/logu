@@ -6,6 +6,7 @@ namespace example {
 void severities_example();
 void datatypes_example();
 void tag_example();
+void disable_example();
 }
 
 int main()
@@ -13,6 +14,7 @@ int main()
     example::severities_example();
     example::datatypes_example();
     example::tag_example();
+    example::disable_example();
 
     return 0;
 }

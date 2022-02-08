@@ -219,7 +219,13 @@ struct logger {
 #define CLOG_OPTION_OUTPUT_STREAM std::cout
 #endif
 
-#if defined(CLOG_OPTION_MIN_SEVERITY_INFO)
+#if defined(CLOG_OPTION_DISABLE_LOGGING)
+#ifdef _MSC_VER
+#define CLOG_CHECK_SEVERITY(severity_) __pragma(warning(push)) __pragma(warning(disable : 4127)) false __pragma(warning(pop))
+#else //_MSC_VER
+#define CLOG_CHECK_SEVERITY(severity_) false
+#endif //_MSC_VER
+#elif defined(CLOG_OPTION_MIN_SEVERITY_INFO)
 #define CLOG_CHECK_SEVERITY(severity_) (severity_ <= clog::severity::info)
 #elif defined(CLOG_OPTION_MIN_SEVERITY_WARN)
 #define CLOG_CHECK_SEVERITY(severity_) (severity_ <= clog::severity::warn)
