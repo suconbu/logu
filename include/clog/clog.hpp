@@ -220,6 +220,58 @@ struct logger {
     std::ostream& os;
 };
 
+template <typename ValueType>
+struct output_wrapper {
+    static void output(std::ostream& os, const ValueType& x)
+    {
+        os << x;
+    }
+};
+
+template <typename ValueType>
+struct output_wrapper<ValueType*> {
+    static void output(std::ostream& os, const ValueType* x)
+    {
+        if (x != nullptr) {
+            os << x;
+        } else {
+            os << "(null)";
+        }
+    }
+};
+
+inline void output_args(std::ostream& os) { (void)os; }
+
+template <typename Ty>
+inline void output_args(std::ostream& os, Ty arg)
+{
+    output_wrapper<Ty>::output(os, arg);
+}
+
+template <typename First, typename... Args>
+inline void output_args(std::ostream& os, First first, Args... args)
+{
+    output_wrapper<First>::output(os, first);
+    os << ", ";
+    output_args(os, args...);
+}
+
+template <typename... Args>
+inline std::string args_to_string(const char* argstr, Args... args)
+{
+    std::ostringstream ss;
+    if (0 < sizeof...(args)) {
+        ss << "(" << argstr << ") -> (";
+        output_args(ss, args...);
+        ss << ") ";
+    } else {
+        if (*argstr != '\0') {
+            ss << argstr << " ";
+        }
+    }
+    return ss.str();
+}
+
 } // namespace clog
 
 // macros
@@ -288,3 +340,5 @@ struct logger {
 #define CLOG_WARN_(tag)  CLOG_INTERNAL(clog::severity::warn, tag)
 #define CLOG_ERROR_(tag) CLOG_INTERNAL(clog::severity::error, tag)
 #define CLOG_(tag)       CLOG_INTERNAL(clog::severity::none, tag)
+
+#define CLOG_ARGS(...) clog::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)

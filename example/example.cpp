@@ -9,6 +9,7 @@ void severityfilter_example();
 void tagfilter_example();
 void disable_example();
 void format_example();
+void arguemnt_example();
 }
 
 int main()
@@ -19,6 +20,7 @@ int main()
     example::tagfilter_example();
     example::disable_example();
     example::format_example();
+    example::arguemnt_example();
 
     return 0;
 }
@@ -71,6 +73,20 @@ void format_example()
     CLOG_INFO_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "info info info");
     CLOG_WARN_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "warn warn warn");
     CLOG_ERROR_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "error error error");
+}
+
+void arguemnt_example()
+{
+    std::cout << "========== " << __func__ << " ==========" << std::endl;
+
+    int n = 1;
+    unsigned int u = 0xFFFFu;
+    double f = 3.141592653589793;
+    const char* cc = "const char*";
+    std::string ss = "std::string";
+    void* ptr = nullptr;
+    CLOG << CLOG_ARGS(n, u, f, cc, ss, "literal", ptr);
+    CLOG << CLOG_ARGS();
 }
 
 } // namespace example
