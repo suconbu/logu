@@ -155,6 +155,15 @@ struct record {
         return *this;
     }
 
+    template <typename... Args>
+    clog::record& format(const char* fmt, Args... args)
+    {
+        char buf[1024];
+        snprintf(buf, sizeof(buf), fmt, args...);
+        ss << buf;
+        return *this;
+    }
+
     std::string message() const
     {
         return ss.str();

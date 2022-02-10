@@ -8,6 +8,7 @@ void datatypes_example();
 void severityfilter_example();
 void tagfilter_example();
 void disable_example();
+void format_example();
 }
 
 int main()
@@ -17,6 +18,7 @@ int main()
     example::severityfilter_example();
     example::tagfilter_example();
     example::disable_example();
+    example::format_example();
 
     return 0;
 }
@@ -52,6 +54,23 @@ void datatypes_example()
     // You can also specify a string pointer that may be "nullptr".
     const char* ptr = nullptr;
     CLOG << ptr;
+}
+
+void format_example()
+{
+    std::cout << "========== " << __func__ << " ==========" << std::endl;
+
+    CLOG.format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "none none none");
+    CLOG_DEBUG.format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "debug debug debug");
+    CLOG_INFO.format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "info info info");
+    CLOG_WARN.format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "warn warn warn");
+    CLOG_ERROR.format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "error error error");
+
+    CLOG_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "none none none");
+    CLOG_DEBUG_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "debug debug debug");
+    CLOG_INFO_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "info info info");
+    CLOG_WARN_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "warn warn warn");
+    CLOG_ERROR_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "error error error");
 }
 
 } // namespace example
