@@ -66,18 +66,11 @@ namespace regex_static {
 namespace util {
     constexpr const char* severity_to_str(clog::severity severity)
     {
-        const char* s = "-----";
-        if (severity == clog::severity::debug) {
-            s = "debug";
-        } else if (severity == clog::severity::info) {
-            s = "info ";
-        } else if (severity == clog::severity::warn) {
-            s = "warn ";
-        } else if (severity == clog::severity::error) {
-            s = "error";
-        } else {
-        }
-        return s;
+        return (severity == clog::severity::debug) ? "debug" :
+            (severity == clog::severity::info)     ? "info" :
+            (severity == clog::severity::warn)     ? "warn" :
+            (severity == clog::severity::error)    ? "error" :
+                                                     "----";
     }
 
     constexpr char path_separator()
