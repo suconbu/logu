@@ -67,22 +67,22 @@ Example:
 
 ```cpp
 #define CLOG_OPTION_MIN_SEVERITY_WARN
-#define CLOG_OPTION_OUTPUT_STREAM std::cerr
+#define CLOG_OPTION_OUTPUT_TO std::cerr
 #include "clog/clog.hpp"
 ...
 ```
 
 Definitions:
-
-| Name                           | Description                                       | Default         |
-| ------------------------------ | ------------------------------------------------- | --------------- |
-| CLOG_OPTION_MIN_SEVERITY_INFO  | Limits the output severity to INFO/WARN/ERROR     | (No definition) |
-| CLOG_OPTION_MIN_SEVERITY_WARN  | Limits the output severity to WARN/ERROR          | (No definition) |
-| CLOG_OPTION_MIN_SEVERITY_ERROR | Limits the output severity to ERROR               | (No definition) |
-| CLOG_OPTION_DENY_TAGS          | Regular expressions for tag that suppress logging | {}              |
-| CLOG_OPTION_DENY_INCLUDE_TAGS  | Regular expression that excludes log suppression  | {}              |
-| CLOG_OPTION_DISABLE_LOGGING    | Turn off the all logging                          | (No definition) |
-| CLOG_OPTION_OUTPUT_STREAM      | Specifies the output stream                       | std::cout       |
+[example.cpp](/example/example.cpp)
+| Name | Description | Default | Example |
+| ------------------------------ | ------------------------------------------------- | --------------- | ------------------------------------------------- |
+| CLOG_OPTION_MIN_SEVERITY_INFO | Limits the output severity to INFO/WARN/ERROR | (No definition) | [example_severityfilter.cpp](/example/example_severityfilter.cpp) |
+| CLOG_OPTION_MIN_SEVERITY_WARN | Limits the output severity to WARN/ERROR | (No definition) | [example_severityfilter.cpp](/example/example_severityfilter.cpp) |
+| CLOG_OPTION_MIN_SEVERITY_ERROR | Limits the output severity to ERROR | (No definition) | [example_severityfilter.cpp](/example/example_severityfilter.cpp) |
+| CLOG_OPTION_DENY_TAGS | Regular expressions for tag that suppress logging | {} | [example_tagfilter.cpp](/example/example_tagfilter.cpp) |
+| CLOG_OPTION_DENY_INCLUDE_TAGS | Regular expression that excludes log suppression | {} | [example_tagfilter.cpp](/example/example_tagfilter.cpp) |
+| CLOG_OPTION_DISABLE_LOGGING | Turn off the all logging | (No definition) | [example_disable.cpp](/example/example_disable.cpp) |
+| CLOG_OPTION_OUTPUT_TO | Specifies the output stream / handler | std::cout | [example_fileoutput.cpp](/example/example_fileoutput.cpp), [example_outputhandler.cpp](/example/example_outputhandler.cpp) |
 
 ## Tag filter by regular expression
 

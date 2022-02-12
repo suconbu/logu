@@ -9,7 +9,9 @@ void severityfilter_example();
 void tagfilter_example();
 void disable_example();
 void format_example();
-void arguemnt_example();
+void argument_example();
+void fileoutput_example();
+void outputhandler_example();
 }
 
 int main()
@@ -20,7 +22,9 @@ int main()
     example::tagfilter_example();
     example::disable_example();
     example::format_example();
-    example::arguemnt_example();
+    example::argument_example();
+    example::fileoutput_example();
+    example::outputhandler_example();
 
     return 0;
 }
@@ -75,7 +79,7 @@ void format_example()
     CLOG_ERROR_("example").format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "error error error");
 }
 
-void arguemnt_example()
+void argument_example()
 {
     std::cout << "========== " << __func__ << " ==========" << std::endl;
 

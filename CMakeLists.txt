@@ -6,6 +6,8 @@ add_executable(${PROJECT_NAME}
     example/example_severityfilter.cpp
     example/example_tagfilter.cpp
     example/example_disable.cpp
+    example/example_fileoutput.cpp
+    example/example_outputhandler.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

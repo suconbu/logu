@@ -6,6 +6,7 @@
 #pragma once
 
 #include <chrono>
+#include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
@@ -109,7 +110,7 @@ namespace util {
 #endif
     }
 
-    inline void operator<<(std::ostringstream& stream, const char* data)
+    inline void operator<<(std::ostream& stream, const char* data)
     {
         std::operator<<(stream, data ? data : "(null)");
     }
@@ -172,15 +173,31 @@ struct record {
 };
 
 struct logger {
+    using handler = std::function<void(const clog::record&)>;
+
     logger(std::ostream& stream)
-        : os(stream)
+        : output_stream(stream)
+        , output_handler(nullptr)
+    {
+    }
+
+    logger(handler handler_)
+        : output_stream(std::cout)
+        , output_handler(handler_)
     {
     }
 
     void operator+=(const clog::record& record)
     {
-        std::ostream& stream = os;
+        if (output_handler != nullptr) {
+            output_handler(record);
+        } else {
+            output(output_stream, record);
+        }
+    }
 
+    void output(std::ostream& stream, const clog::record& record)
+    {
         // datetime
         const auto timet = std::chrono::system_clock::to_time_t(record.time);
         struct tm localt = {};
@@ -210,7 +227,8 @@ struct logger {
         stream << record.message() << std::endl;
     }
 
-    std::ostream& os;
+    std::ostream& output_stream;
+    handler output_handler;
 };
 
 template <typename ValueType>
@@ -269,16 +287,12 @@ inline std::string args_to_string(const char* argstr, Args... args)
 
 // macros
 
-#if !defined(CLOG_OPTION_OUTPUT_STREAM)
-#define CLOG_OPTION_OUTPUT_STREAM std::cout
+#if !defined(CLOG_OPTION_OUTPUT_TO)
+#define CLOG_OPTION_OUTPUT_TO std::cout
 #endif
 
 #if defined(CLOG_OPTION_DISABLE_LOGGING)
-#ifdef _MSC_VER
-#define CLOG_CHECK_SEVERITY(severity_) __pragma(warning(push)) __pragma(warning(disable : 4127)) false __pragma(warning(pop))
-#else //_MSC_VER
 #define CLOG_CHECK_SEVERITY(severity_) false
-#endif //_MSC_VER
 #elif defined(CLOG_OPTION_MIN_SEVERITY_INFO)
 #define CLOG_CHECK_SEVERITY(severity_) (severity_ <= clog::severity::info)
 #elif defined(CLOG_OPTION_MIN_SEVERITY_WARN)
@@ -306,7 +320,7 @@ inline std::string args_to_string(const char* argstr, Args... args)
 
 #define CLOG_GET_FILE() clog::util::basename(__FILE__)
 
-#define CLOG_INTERNAL(severity, tag)                                                                                                                              \
+#define CLOG_OUTPUT_INTERNAL(severity, tag)                                                                                                                       \
     if (!CLOG_CHECK_SEVERITY(severity) || ![]() {                                                                                                                 \
             constexpr const char* allow[] = CLOG_OPTION_DENY_EXCLUDE_TAGS;                                                                                        \
             constexpr size_t allow_count = sizeof(allow) / sizeof(allow[0]);                                                                                      \
@@ -319,19 +333,25 @@ inline std::string args_to_string(const char* argstr, Args... args)
             return result;                                                                                                                                        \
         }()) {                                                                                                                                                    \
     } else                                                                                                                                                        \
-        clog::logger(CLOG_OPTION_OUTPUT_STREAM)                                                                                                                   \
+        clog::logger(CLOG_OPTION_OUTPUT_TO)                                                                                                                       \
             += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__).ref()
 
-#define CLOG_DEBUG CLOG_INTERNAL(clog::severity::debug, nullptr)
-#define CLOG_INFO  CLOG_INTERNAL(clog::severity::info, nullptr)
-#define CLOG_WARN  CLOG_INTERNAL(clog::severity::warn, nullptr)
-#define CLOG_ERROR CLOG_INTERNAL(clog::severity::error, nullptr)
-#define CLOG       CLOG_INTERNAL(clog::severity::none, nullptr)
+#if defined(_MSC_VER)
+#define CLOG_OUTPUT(severity, tag) __pragma(warning(push)) __pragma(warning(disable : 4127)) CLOG_OUTPUT_INTERNAL(severity, tag) __pragma(warning(pop))
+#else
+#define CLOG_OUTPUT(severity, tag) CLOG_OUTPUT_INTERNAL(severity, tag)
+#endif
 
-#define CLOG_DEBUG_(tag) CLOG_INTERNAL(clog::severity::debug, tag)
-#define CLOG_INFO_(tag)  CLOG_INTERNAL(clog::severity::info, tag)
-#define CLOG_WARN_(tag)  CLOG_INTERNAL(clog::severity::warn, tag)
-#define CLOG_ERROR_(tag) CLOG_INTERNAL(clog::severity::error, tag)
-#define CLOG_(tag)       CLOG_INTERNAL(clog::severity::none, tag)
+#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, nullptr)
+#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, nullptr)
+#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, nullptr)
+#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, nullptr)
+#define CLOG       CLOG_OUTPUT(clog::severity::none, nullptr)
+
+#define CLOG_DEBUG_(tag) CLOG_OUTPUT(clog::severity::debug, tag)
+#define CLOG_INFO_(tag)  CLOG_OUTPUT(clog::severity::info, tag)
+#define CLOG_WARN_(tag)  CLOG_OUTPUT(clog::severity::warn, tag)
+#define CLOG_ERROR_(tag) CLOG_OUTPUT(clog::severity::error, tag)
+#define CLOG_(tag)       CLOG_OUTPUT(clog::severity::none, tag)
 
 #define CLOG_ARGS(...) clog::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
