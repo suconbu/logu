@@ -90,7 +90,6 @@ void argument_example()
     std::string ss = "std::string";
     void* ptr = nullptr;
     CLOG << CLOG_ARGS(n, u, f, cc, ss, "literal", ptr);
-    CLOG << CLOG_ARGS();
 }
 
 } // namespace example

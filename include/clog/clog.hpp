@@ -13,6 +13,17 @@
 
 namespace clog {
 
+#if defined(_MSC_VER)
+extern "C" {
+using LPCSTR = const char*;
+void OutputDebugStringA(LPCSTR lpOutputString);
+}
+#endif
+
+#if defined(__ANDROID__)
+#include <android/log.h>
+#endif
+
 enum severity {
     none,
     error,
@@ -192,11 +203,11 @@ struct logger {
         if (output_handler != nullptr) {
             output_handler(record);
         } else {
-            output(output_stream, record);
+            output_to_stream(record, output_stream);
         }
     }
 
-    void output(std::ostream& stream, const clog::record& record)
+    static void output_to_stream(const clog::record& record, std::ostream& stream)
     {
         // datetime
         const auto timet = std::chrono::system_clock::to_time_t(record.time);
@@ -230,6 +241,28 @@ struct logger {
     std::ostream& output_stream;
     handler output_handler;
 };
+
+#if defined(_MSC_VER)
+inline void windows_debugger(const clog::record& record)
+{
+    std::ostringstream ss;
+    clog::logger::output_to_stream(record, ss);
+    OutputDebugStringA(ss.str().c_str());
+}
+#endif
+
+#if defined(__ANDROID__)
+inline void android_debugger(const clog::record& record)
+{
+    android_LogPriority priority = (record.severity == clog::severity::debug) ? ANDROID_LOG_DEBUG :
+        (record.severity == clog::severity::info)                             ? ANDROID_LOG_INFO :
+        (record.severity == clog::severity::warn)                             ? ANDROID_LOG_WARN :
+        (record.severity == clog::severity::error)                            ? ANDROID_LOG_ERROR :
+                                                                                ANDROID_LOG_FATAL;
+    const char* tag = (record.tag != nullptr) ? record.tag : "";
+    __android_log_print(priority, tag, "[%s] [%s@%zu] %s", record.file, record.func, record.line, record.message().c_str());
+}
+#endif
 
 template <typename ValueType>
 struct output_wrapper {

@@ -84,6 +84,32 @@ Definitions:
 | CLOG_OPTION_DISABLE_LOGGING | Turn off the all logging | (No definition) | [example_disable.cpp](/example/example_disable.cpp) |
 | CLOG_OPTION_OUTPUT_TO | Specifies the output stream / handler | std::cout | [example_fileoutput.cpp](/example/example_fileoutput.cpp), [example_outputhandler.cpp](/example/example_outputhandler.cpp) |
 
+## Output stream / handler
+
+`CLOG_OPTION_OUTPUT_TO` specify where to output the log in following types.
+
+- Output stream (std::ostream and inherited class)
+- Function (void func(const clog::record&))
+
+Example:
+
+```cpp
+#define CLOG_OPTION_OUTPUT_TO std::cout                 // Default
+#define CLOG_OPTION_OUTPUT_TO my_stream                 // To file stream
+#define CLOG_OPTION_OUTPUT_TO clog::windows_debugger    // Preset handler for Windows (Use "OutputDebugStringA")
+#define CLOG_OPTION_OUTPUT_TO clog::android_debugger    // Preset handler for Android (Use "__android_log_print")
+#define CLOG_OPTION_OUTPUT_TO my_handler                // Use custom handler
+#include "clog/clog.hpp"
+
+std::ofstream my_stream("my_output.log");
+
+void my_handler(const clog::record& record)
+{
+    printf("[my-logging] %s\n", record.message().c_str());
+}
+...
+```
+
 ## Tag filter by regular expression
 
 `CLOG_OPTION_DENY_TAGS` and `CLOG_OPTION_DENY_EXCLUDE_TAGS` macros control supression the unnecessary logs by pattern matching for tag string.
