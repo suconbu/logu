@@ -58,7 +58,7 @@ void datatypes_example()
     CLOG << "string";
     CLOG << std::string("std::string");
     // You can also specify a string pointer that may be "nullptr".
-    const char* ptr = nullptr;
+    int* ptr = nullptr;
     CLOG << ptr;
 }
 

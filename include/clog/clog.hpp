@@ -11,6 +11,62 @@
 #include <iostream>
 #include <sstream>
 
+// macro
+
+#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, nullptr)
+#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, nullptr)
+#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, nullptr)
+#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, nullptr)
+#define CLOG       CLOG_OUTPUT(clog::severity::none, nullptr)
+
+#define CLOG_DEBUG_(tag) CLOG_OUTPUT(clog::severity::debug, tag)
+#define CLOG_INFO_(tag)  CLOG_OUTPUT(clog::severity::info, tag)
+#define CLOG_WARN_(tag)  CLOG_OUTPUT(clog::severity::warn, tag)
+#define CLOG_ERROR_(tag) CLOG_OUTPUT(clog::severity::error, tag)
+#define CLOG_(tag)       CLOG_OUTPUT(clog::severity::none, tag)
+
+#define CLOG_ARGS(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
+
+#ifdef _MSC_VER
+#define CLOG_GET_FUNC() __FUNCTION__
+#else
+#define CLOG_GET_FUNC() __PRETTY_FUNCTION__
+#endif
+
+#define CLOG_GET_FILE() clog::internal::basename(__FILE__)
+
+// option macro
+
+#if !defined(CLOG_OPTION_OUTPUT_TO)
+#define CLOG_OPTION_OUTPUT_TO std::cout
+#endif
+
+// clang-format off
+#if !defined(CLOG_OPTION_DENY_TAGS)
+#define CLOG_OPTION_DENY_TAGS { nullptr }
+#endif
+#if !defined(CLOG_OPTION_DENY_EXCLUDE_TAGS)
+#define CLOG_OPTION_DENY_EXCLUDE_TAGS { nullptr }
+#endif
+// clang-format on
+
+// internal macro
+
+#if defined(_MSC_VER)
+#define CLOG_OUTPUT(severity, tag) __pragma(warning(push)) __pragma(warning(disable : 4127)) CLOG_OUTPUT_INTERNAL(severity, tag) __pragma(warning(pop))
+#else
+#define CLOG_OUTPUT(severity, tag) CLOG_OUTPUT_INTERNAL(severity, tag)
+#endif
+
+#define CLOG_OUTPUT_INTERNAL(severity, tag)                                    \
+    if (![]() {                                                                \
+            constexpr bool result = clog::internal::can_output(severity, tag); \
+            return result;                                                     \
+        }()) {                                                                 \
+    } else                                                                     \
+        clog::logger(CLOG_OPTION_OUTPUT_TO)                                    \
+            += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__).ref()
+
 namespace clog {
 
 #if defined(_MSC_VER)
@@ -32,58 +88,49 @@ enum severity {
     debug
 };
 
-namespace regex_static {
-    // clang-format off
+namespace internal {
+    namespace regex_static {
+        // clang-format off
 
-    // http://cpptruths.blogspot.com/2011/07/compile-time-regex-matcher-using.html
+        // http://cpptruths.blogspot.com/2011/07/compile-time-regex-matcher-using.html
 
-    constexpr int match_c(const char *regexp, const char *text);
-    constexpr int matchhere_c(const char *regexp, const char *text);
-    constexpr int matchstar_c(int c, const char *regexp, const char *text);
-    constexpr int matchend_c(const char * regexp, const char * text);
+        constexpr int match_c(const char *regexp, const char *text);
+        constexpr int matchhere_c(const char *regexp, const char *text);
+        constexpr int matchstar_c(int c, const char *regexp, const char *text);
+        constexpr int matchend_c(const char * regexp, const char * text);
 
-    constexpr int match_c(const char *regexp, const char *text)
-    {
-        return (regexp[0] == '^') ? matchhere_c(regexp+1, text) : 
-                                    matchend_c(regexp, text);
-    }
+        constexpr int match_c(const char *regexp, const char *text)
+        {
+            return (regexp[0] == '^') ? matchhere_c(regexp+1, text) : 
+                                        matchend_c(regexp, text);
+        }
 
-    /* matchhere: search for regexp at beginning of text */
-    constexpr int matchhere_c(const char *regexp, const char *text)
-    {
-        return (regexp[0] == '\0') ? 1 : 
-                (regexp[1] == '*') ? matchstar_c(regexp[0], regexp+2, text) :
-                (regexp[0] == '$' && regexp[1] == '\0') ? (*text == '\0') :
-                (*text!='\0' && (regexp[0]=='.' || regexp[0]==*text)) ? 
-                matchhere_c(regexp+1, text+1) : 0;
-    }
+        /* matchhere: search for regexp at beginning of text */
+        constexpr int matchhere_c(const char *regexp, const char *text)
+        {
+            return (regexp[0] == '\0') ? 1 : 
+                    (regexp[1] == '*') ? matchstar_c(regexp[0], regexp+2, text) :
+                    (regexp[0] == '$' && regexp[1] == '\0') ? (*text == '\0') :
+                    (*text!='\0' && (regexp[0]=='.' || regexp[0]==*text)) ? 
+                    matchhere_c(regexp+1, text+1) : 0;
+        }
 
-    constexpr int matchend_c(const char * regexp, const char * text)
-    {
-        return matchhere_c(regexp, text) ? 1 : 
-                (*text == '\0') ? 0 : matchend_c(regexp, text+1);
-    }
+        constexpr int matchend_c(const char * regexp, const char * text)
+        {
+            return matchhere_c(regexp, text) ? 1 : 
+                    (*text == '\0') ? 0 : matchend_c(regexp, text+1);
+        }
 
-    /* matchstar: search for c*regexp at beginning of text */
-    constexpr int matchstar_c(int c, const char * regexp, const char *text)
-    {
-        return matchhere_c(regexp, text) ? 1 : 
-                (*text != '\0' && (*text == c || c == '.')) ? 
-                matchstar_c(c, regexp, text+1) : 0;
-    }
+        /* matchstar: search for c*regexp at beginning of text */
+        constexpr int matchstar_c(int c, const char * regexp, const char *text)
+        {
+            return matchhere_c(regexp, text) ? 1 : 
+                    (*text != '\0' && (*text == c || c == '.')) ? 
+                    matchstar_c(c, regexp, text+1) : 0;
+        }
 
-    // clang-format on
-} // namespace regex_static
-
-namespace util {
-    constexpr const char* severity_to_str(clog::severity severity)
-    {
-        return (severity == clog::severity::debug) ? "debug" :
-            (severity == clog::severity::info)     ? "info" :
-            (severity == clog::severity::warn)     ? "warn" :
-            (severity == clog::severity::error)    ? "error" :
-                                                     "----";
-    }
+        // clang-format on
+    } // namespace regex_static
 
     constexpr char path_separator()
     {
@@ -121,23 +168,118 @@ namespace util {
 #endif
     }
 
-    inline void operator<<(std::ostream& stream, const char* data)
-    {
-        std::operator<<(stream, data ? data : "(null)");
-    }
-
     constexpr bool match_list_recursive_static(const char* s, const char* const patterns[], size_t count, size_t index)
     {
-        return (count <= index)                                    ? false :
-            (clog::regex_static::match_c(patterns[index], s) != 0) ? true :
-                                                                     match_list_recursive_static(s, patterns, count, index + 1);
+        return (count <= index)                                              ? false :
+            (clog::internal::regex_static::match_c(patterns[index], s) != 0) ? true :
+                                                                               match_list_recursive_static(s, patterns, count, index + 1);
     }
 
     constexpr bool match_list_static(const char* s, const char* const patterns[], size_t count)
     {
         return (s != nullptr) ? match_list_recursive_static(s, patterns, count, 0) : false;
     }
-}
+
+    template <typename Type, size_t Size>
+    constexpr size_t count_of(const Type (&)[Size])
+    {
+        return Size;
+    }
+
+    template <typename ValueType>
+    struct output_wrapper {
+        static void output(std::ostream& os, const ValueType& x)
+        {
+            os << x;
+        }
+    };
+
+    template <typename ValueType>
+    struct output_wrapper<ValueType*> {
+        static void output(std::ostream& os, const ValueType* x)
+        {
+            if (x != nullptr) {
+                os << x;
+            } else {
+                os << "(null)";
+            }
+        }
+    };
+
+    inline void output_args(std::ostream& os) { (void)os; }
+
+    template <typename Ty>
+    inline void output_args(std::ostream& os, Ty arg)
+    {
+        output_wrapper<Ty>::output(os, arg);
+    }
+
+    template <typename First, typename... Args>
+    inline void output_args(std::ostream& os, First first, Args... args)
+    {
+        output_wrapper<First>::output(os, first);
+        os << ", ";
+        output_args(os, args...);
+    }
+
+    template <typename... Args>
+    inline std::string args_to_string(const char* argstr, Args... args)
+    {
+        std::ostringstream ss;
+        if (0 < sizeof...(args)) {
+            ss << "(" << argstr << ") -> (";
+            output_args(ss, args...);
+            ss << ") ";
+        } else {
+            if (*argstr != '\0') {
+                ss << argstr << " ";
+            }
+        }
+        return ss.str();
+    }
+
+    constexpr const char* deny_tags[] = CLOG_OPTION_DENY_TAGS;
+    constexpr const char* deny_exclude_tags[] = CLOG_OPTION_DENY_EXCLUDE_TAGS;
+
+    constexpr bool can_output_severity(clog::severity severity)
+    {
+#if defined(CLOG_OPTION_DISABLE_LOGGING)
+        return severity != severity; // false
+#elif defined(CLOG_OPTION_MIN_SEVERITY_INFO)
+        return severity <= clog::severity::info;
+#elif defined(CLOG_OPTION_MIN_SEVERITY_WARN)
+        return severity <= clog::severity::warn;
+#elif defined(CLOG_OPTION_MIN_SEVERITY_ERROR)
+        return severity <= clog::severity::error;
+#else
+        return severity == severity; // true
+#endif
+    }
+
+    constexpr bool match_deny_tags(const char* tag)
+    {
+        return (deny_tags[0] != nullptr) ?
+            clog::internal::match_list_static(tag, deny_tags, clog::internal::count_of(deny_tags)) :
+            false;
+    }
+
+    constexpr bool match_deny_exclude_tags(const char* tag)
+    {
+        return (deny_exclude_tags[0] != nullptr) ?
+            clog::internal::match_list_static(tag, deny_exclude_tags, clog::internal::count_of(deny_exclude_tags)) :
+            false;
+    }
+
+    constexpr bool can_output_tag(const char* tag)
+    {
+        return (tag != nullptr && match_deny_tags(tag)) ? match_deny_exclude_tags(tag) : true;
+    }
+
+    constexpr bool can_output(clog::severity severity, const char* tag)
+    {
+        return can_output_severity(severity) && can_output_tag(tag);
+    }
+} // namespace internal
 
 struct record {
     record(clog::severity severity_, const char* tag_, const char* file_, const char* func_, size_t line_)
@@ -155,8 +297,7 @@ struct record {
     template <typename Type>
     clog::record& operator<<(const Type& data)
     {
-        using namespace clog::util;
-        ss << data;
+        clog::internal::output_wrapper<Type>::output(ss, data);
         return *this;
     }
 
@@ -212,7 +353,7 @@ struct logger {
         // datetime
         const auto timet = std::chrono::system_clock::to_time_t(record.time);
         struct tm localt = {};
-        util::localtime_s(&localt, &timet);
+        internal::localtime_s(&localt, &timet);
         char datetime_buf[20];
         const char* datetime_fmt = "%Y-%m-%d %H:%M:%S";
         std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
@@ -221,7 +362,7 @@ struct logger {
         stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
 
         // severity
-        stream << "[" << clog::util::severity_to_str(record.severity) << "] ";
+        stream << "[" << severity_to_str(record.severity) << "] ";
 
         // file
         stream << "[" << record.file << "] ";
@@ -236,6 +377,15 @@ struct logger {
 
         // message
         stream << record.message() << std::endl;
+    }
+
+    static constexpr const char* severity_to_str(clog::severity severity)
+    {
+        return (severity == clog::severity::debug) ? "debug" :
+            (severity == clog::severity::info)     ? "info" :
+            (severity == clog::severity::warn)     ? "warn" :
+            (severity == clog::severity::error)    ? "error" :
+                                                     "----";
     }
 
     std::ostream& output_stream;
@@ -264,127 +414,4 @@ inline void android_debugger(const clog::record& record)
 }
 #endif
 
-template <typename ValueType>
-struct output_wrapper {
-    static void output(std::ostream& os, const ValueType& x)
-    {
-        os << x;
-    }
-};
-
-template <typename ValueType>
-struct output_wrapper<ValueType*> {
-    static void output(std::ostream& os, const ValueType* x)
-    {
-        if (x != nullptr) {
-            os << x;
-        } else {
-            os << "(null)";
-        }
-    }
-};
-
-inline void output_args(std::ostream& os) { (void)os; }
-
-template <typename Ty>
-inline void output_args(std::ostream& os, Ty arg)
-{
-    output_wrapper<Ty>::output(os, arg);
-}
-
-template <typename First, typename... Args>
-inline void output_args(std::ostream& os, First first, Args... args)
-{
-    output_wrapper<First>::output(os, first);
-    os << ", ";
-    output_args(os, args...);
-}
-
-template <typename... Args>
-inline std::string args_to_string(const char* argstr, Args... args)
-{
-    std::ostringstream ss;
-    if (0 < sizeof...(args)) {
-        ss << "(" << argstr << ") -> (";
-        output_args(ss, args...);
-        ss << ") ";
-    } else {
-        if (*argstr != '\0') {
-            ss << argstr << " ";
-        }
-    }
-    return ss.str();
-}
-
 } // namespace clog
-
-// macros
-
-#if !defined(CLOG_OPTION_OUTPUT_TO)
-#define CLOG_OPTION_OUTPUT_TO std::cout
-#endif
-
-#if defined(CLOG_OPTION_DISABLE_LOGGING)
-#define CLOG_CHECK_SEVERITY(severity_) false
-#elif defined(CLOG_OPTION_MIN_SEVERITY_INFO)
-#define CLOG_CHECK_SEVERITY(severity_) (severity_ <= clog::severity::info)
-#elif defined(CLOG_OPTION_MIN_SEVERITY_WARN)
-#define CLOG_CHECK_SEVERITY(severity_) (severity_ <= clog::severity::warn)
-#elif defined(CLOG_OPTION_MIN_SEVERITY_ERROR)
-#define CLOG_CHECK_SEVERITY(severity_) (severity_ <= clog::severity::error)
-#else
-#define CLOG_CHECK_SEVERITY(severity_) true
-#endif
-
-// clang-format off
-#if !defined(CLOG_OPTION_DENY_TAGS)
-#define CLOG_OPTION_DENY_TAGS { 0 }
-#endif
-#if !defined(CLOG_OPTION_DENY_EXCLUDE_TAGS)
-#define CLOG_OPTION_DENY_EXCLUDE_TAGS { 0 }
-#endif
-// clang-format on
-
-#ifdef _MSC_VER
-#define CLOG_GET_FUNC() __FUNCTION__
-#else
-#define CLOG_GET_FUNC() __PRETTY_FUNCTION__
-#endif
-
-#define CLOG_GET_FILE() clog::util::basename(__FILE__)
-
-#define CLOG_OUTPUT_INTERNAL(severity, tag)                                                                                                                       \
-    if (!CLOG_CHECK_SEVERITY(severity) || ![]() {                                                                                                                 \
-            constexpr const char* allow[] = CLOG_OPTION_DENY_EXCLUDE_TAGS;                                                                                        \
-            constexpr size_t allow_count = sizeof(allow) / sizeof(allow[0]);                                                                                      \
-                                                                                                                                                                  \
-            constexpr const char* deny[] = CLOG_OPTION_DENY_TAGS;                                                                                                 \
-            constexpr size_t deny_count = sizeof(deny) / sizeof(deny[0]);                                                                                         \
-                                                                                                                                                                  \
-            constexpr bool allowed = (static_cast<const char*>(tag) != nullptr && allow[0] != 0) ? clog::util::match_list_static(tag, allow, allow_count) : true; \
-            constexpr bool result = (!allowed && deny[0] != 0) ? !clog::util::match_list_static(tag, deny, deny_count) : true;                                    \
-            return result;                                                                                                                                        \
-        }()) {                                                                                                                                                    \
-    } else                                                                                                                                                        \
-        clog::logger(CLOG_OPTION_OUTPUT_TO)                                                                                                                       \
-            += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__).ref()
-
-#if defined(_MSC_VER)
-#define CLOG_OUTPUT(severity, tag) __pragma(warning(push)) __pragma(warning(disable : 4127)) CLOG_OUTPUT_INTERNAL(severity, tag) __pragma(warning(pop))
-#else
-#define CLOG_OUTPUT(severity, tag) CLOG_OUTPUT_INTERNAL(severity, tag)
-#endif
-
-#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, nullptr)
-#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, nullptr)
-#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, nullptr)
-#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, nullptr)
-#define CLOG       CLOG_OUTPUT(clog::severity::none, nullptr)
-
-#define CLOG_DEBUG_(tag) CLOG_OUTPUT(clog::severity::debug, tag)
-#define CLOG_INFO_(tag)  CLOG_OUTPUT(clog::severity::info, tag)
-#define CLOG_WARN_(tag)  CLOG_OUTPUT(clog::severity::warn, tag)
-#define CLOG_ERROR_(tag) CLOG_OUTPUT(clog::severity::error, tag)
-#define CLOG_(tag)       CLOG_OUTPUT(clog::severity::none, tag)
-
-#define CLOG_ARGS(...) clog::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
