@@ -11,7 +11,9 @@
 #include <iostream>
 #include <sstream>
 
-// macro
+//
+// basic macro
+//
 
 #define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, nullptr)
 #define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, nullptr)
@@ -35,11 +37,26 @@
 
 #define CLOG_GET_FILE() clog::internal::basename(__FILE__)
 
+//
 // option macro
+//
+
+// #define CLOG_OPTION_DISABLE_LOGGING
+// #define CLOG_OPTION_MIN_SEVERITY_INFO
+// #define CLOG_OPTION_MIN_SEVERITY_WARN
+// #define CLOG_OPTION_MIN_SEVERITY_ERROR
 
 #if !defined(CLOG_OPTION_OUTPUT_TO)
 #define CLOG_OPTION_OUTPUT_TO std::cout
 #endif
+
+// #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME
+// #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME_YEAR
+// #define CLOG_OPTION_DISABLE_OUTPUT_SEVERITY
+// #define CLOG_OPTION_DISABLE_OUTPUT_FILE
+// #define CLOG_OPTION_DISABLE_OUTPUT_FUNC
+// #define CLOG_OPTION_DISABLE_OUTPUT_LINE
+// #define CLOG_OPTION_DISABLE_OUTPUT_TAG
 
 // clang-format off
 #if !defined(CLOG_OPTION_DENY_TAGS)
@@ -279,6 +296,11 @@ namespace internal {
     {
         return can_output_severity(severity) && can_output_tag(tag);
     }
+
+    constexpr bool is_empty(const char* s)
+    {
+        return s == nullptr || *s == '\0';
+    }
 } // namespace internal
 
 struct record {
@@ -324,6 +346,93 @@ struct record {
     std::ostringstream ss;
 };
 
+struct formatter {
+    static void format(const clog::record& record, std::ostream& stream)
+    {
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_DATETIME)
+        datetime(record, stream);
+#endif
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_SEVERITY)
+        severity(record, stream);
+#endif
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FILE)
+        file(record, stream);
+#endif
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FUNC)
+        func(record, stream);
+#endif // CLOG_OPTION_DISABLE_OUTPUT_FUNC
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_TAG)
+        tag(record, stream);
+#endif
+        stream << record.message();
+    }
+
+    static void datetime(const clog::record& record, std::ostream& stream)
+    {
+        // datetime
+        const auto timet = std::chrono::system_clock::to_time_t(record.time);
+        struct tm localt = {};
+        internal::localtime_s(&localt, &timet);
+        char datetime_buf[20];
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_DATETIME_YEAR)
+        const char* datetime_fmt = "%Y-%m-%d %H:%M:%S";
+#else
+        const char* datetime_fmt = "%m-%d %H:%M:%S";
+#endif
+        std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
+        stream << "[" << datetime_buf;
+        const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time.time_since_epoch()).count() % 1000;
+        stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
+    }
+
+    static void severity(const clog::record& record, std::ostream& stream)
+    {
+        // severity
+        stream << "[" << severity_to_str(record.severity) << "] ";
+    }
+
+    static void file(const clog::record& record, std::ostream& stream)
+    {
+        // file
+        if (!clog::internal::is_empty(record.file)) {
+#if defined(CLOG_OPTION_DISABLE_OUTPUT_FUNC) && !defined(CLOG_OPTION_DISABLE_OUTPUT_LINE)
+            stream << "[" << record.file << "@" << record.line << "] ";
+#else
+            stream << "[" << record.file << "] ";
+#endif
+        }
+    }
+
+    static void func(const clog::record& record, std::ostream& stream)
+    {
+        // func/line
+        if (!clog::internal::is_empty(record.func)) {
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_LINE)
+            stream << "[" << record.func << "@" << record.line << "] ";
+#else
+            stream << "[" << record.func << "] ";
+#endif
+        }
+    }
+
+    static void tag(const clog::record& record, std::ostream& stream)
+    {
+        // tag
+        if (!clog::internal::is_empty(record.tag)) {
+            stream << "[" << record.tag << "] ";
+        }
+    }
+
+    static constexpr const char* severity_to_str(clog::severity severity)
+    {
+        return (severity == clog::severity::debug) ? "debug" :
+            (severity == clog::severity::info)     ? "info " :
+            (severity == clog::severity::warn)     ? "warn " :
+            (severity == clog::severity::error)    ? "error" :
+                                                     "-----";
+    }
+};
+
 struct logger {
     using handler = std::function<void(const clog::record&)>;
 
@@ -344,48 +453,9 @@ struct logger {
         if (output_handler != nullptr) {
             output_handler(record);
         } else {
-            output_to_stream(record, output_stream);
+            clog::formatter::format(record, output_stream);
+            output_stream << std::endl;
         }
-    }
-
-    static void output_to_stream(const clog::record& record, std::ostream& stream)
-    {
-        // datetime
-        const auto timet = std::chrono::system_clock::to_time_t(record.time);
-        struct tm localt = {};
-        internal::localtime_s(&localt, &timet);
-        char datetime_buf[20];
-        const char* datetime_fmt = "%Y-%m-%d %H:%M:%S";
-        std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
-        stream << "[" << datetime_buf;
-        const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time.time_since_epoch()).count() % 1000;
-        stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
-
-        // severity
-        stream << "[" << severity_to_str(record.severity) << "] ";
-
-        // file
-        stream << "[" << record.file << "] ";
-
-        // func/line
-        stream << "[" << record.func << "@" << record.line << "] ";
-
-        // tag
-        if (record.tag != 0 && record.tag[0] != 0) {
-            stream << "[" << record.tag << "] ";
-        }
-
-        // message
-        stream << record.message() << std::endl;
-    }
-
-    static constexpr const char* severity_to_str(clog::severity severity)
-    {
-        return (severity == clog::severity::debug) ? "debug" :
-            (severity == clog::severity::info)     ? "info" :
-            (severity == clog::severity::warn)     ? "warn" :
-            (severity == clog::severity::error)    ? "error" :
-                                                     "----";
     }
 
     std::ostream& output_stream;
@@ -396,7 +466,7 @@ struct logger {
 inline void windows_debugger(const clog::record& record)
 {
     std::ostringstream ss;
-    clog::logger::output_to_stream(record, ss);
+    clog::formatter::format(record, ss);
     OutputDebugStringA(ss.str().c_str());
 }
 #endif
@@ -410,7 +480,15 @@ inline void android_debugger(const clog::record& record)
         (record.severity == clog::severity::error)                            ? ANDROID_LOG_ERROR :
                                                                                 ANDROID_LOG_FATAL;
     const char* tag = (record.tag != nullptr) ? record.tag : "";
-    __android_log_print(priority, tag, "[%s] [%s@%zu] %s", record.file, record.func, record.line, record.message().c_str());
+    std::ostringstream ss;
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FILE)
+    clog::formatter::file(record, ss);
+#endif
+#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FUNC)
+    clog::formatter::func(record, ss);
+#endif
+    ss << record.message();
+    __android_log_print(priority, tag, "%s", ss.str().c_str());
 }
 #endif
 
