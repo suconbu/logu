@@ -12,6 +12,7 @@ void format_example();
 void argument_example();
 void fileoutput_example();
 void outputhandler_example();
+void instance_example();
 }
 
 int main()
@@ -25,6 +26,7 @@ int main()
     example::argument_example();
     example::fileoutput_example();
     example::outputhandler_example();
+    example::instance_example();
 
     return 0;
 }
@@ -90,6 +92,22 @@ void argument_example()
     std::string ss = "std::string";
     void* ptr = nullptr;
     CLOG << CLOG_ARGS(n, u, f, cc, ss, "literal", ptr);
+}
+
+void example_handler_1(const char* str)
+{
+    std::cout << "<<< example_handler_1 >>> " << str << std::endl;
+    // std::cout << "<<< example_handler_1 >>> " << record.message() << std::endl;
+}
+
+void instance_example()
+{
+    std::cout << "========== " << __func__ << " ==========" << std::endl;
+
+    CLOG_GET("name")
+        .set_severity(clog::severity::info)
+        .set_handler(example_handler_1, std::cout, "hogeeee.log", clog::windows_debugger);
+    CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "test";
 }
 
 } // namespace example

@@ -6,10 +6,12 @@
 #pragma once
 
 #include <chrono>
+#include <fstream>
 #include <functional>
 #include <iomanip>
 #include <iostream>
 #include <sstream>
+#include <vector>
 
 //
 // basic macro
@@ -29,6 +31,8 @@
 
 #define CLOG_ARGS(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
 
+#define CLOG_GET(name) clog::instance<CLOG_GET_HASH(name)>::get().logger()
+
 #ifdef _MSC_VER
 #define CLOG_GET_FUNC() __FUNCTION__
 #else
@@ -36,6 +40,8 @@
 #endif
 
 #define CLOG_GET_FILE() clog::internal::basename(__FILE__)
+
+#define CLOG_GET_HASH(str) clog::internal::murmur3::murmur3(str, clog::internal::strlen_static(str))
 
 //
 // option macro
@@ -81,7 +87,7 @@
             return result;                                                     \
         }()) {                                                                 \
     } else                                                                     \
-        clog::logger(CLOG_OPTION_OUTPUT_TO)                                    \
+        clog::logger()                                                         \
             += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__).ref()
 
 namespace clog {
@@ -106,6 +112,36 @@ enum severity {
 };
 
 namespace internal {
+    namespace murmur3 {
+        constexpr uint32_t seed = 0;
+
+        constexpr uint32_t to_uint32(char const* key, size_t i = sizeof(uint32_t), uint32_t u32 = 0) { return i ? to_uint32(key, i - 1, (u32 << 8) | key[i - 1]) : u32; }
+
+        constexpr uint32_t murmur3a_5(uint32_t h) { return (h * 5) + 0xe6546b64; }
+        constexpr uint32_t murmur3a_4(uint32_t h) { return murmur3a_5((h << 13) | (h >> 19)); }
+        constexpr uint32_t murmur3a_3(uint32_t k, uint32_t h) { return murmur3a_4(h ^ k); }
+        constexpr uint32_t murmur3a_2(uint32_t k, uint32_t h) { return murmur3a_3(k * 0x1b873593, h); }
+        constexpr uint32_t murmur3a_1(uint32_t k, uint32_t h) { return murmur3a_2((k << 15) | (k >> 17), h); }
+        constexpr uint32_t murmur3a_0(uint32_t k, uint32_t h) { return murmur3a_1(k * 0xcc9e2d51, h); }
+        constexpr uint32_t murmur3a(char const* key, size_t i, uint32_t h = seed) { return i ? murmur3a(key + sizeof(uint32_t), i - 1, murmur3a_0(to_uint32(key), h)) : h; }
+
+        constexpr uint32_t murmur3b_3(uint32_t k, uint32_t h) { return h ^ k; }
+        constexpr uint32_t murmur3b_2(uint32_t k, uint32_t h) { return murmur3b_3(k * 0x1b873593, h); }
+        constexpr uint32_t murmur3b_1(uint32_t k, uint32_t h) { return murmur3b_2((k << 15) | (k >> 17), h); }
+        constexpr uint32_t murmur3b_0(uint32_t k, uint32_t h) { return murmur3b_1(k * 0xcc9e2d51, h); }
+        constexpr uint32_t murmur3b(char const* key, size_t i, uint32_t h) { return i ? murmur3b_0(to_uint32(key, i), h) : h; }
+
+        constexpr uint32_t murmur3c_4(uint32_t h) { return h ^ (h >> 16); }
+        constexpr uint32_t murmur3c_3(uint32_t h) { return murmur3c_4(h * 0xc2b2ae35); }
+        constexpr uint32_t murmur3c_2(uint32_t h) { return murmur3c_3(h ^ (h >> 13)); }
+        constexpr uint32_t murmur3c_1(uint32_t h) { return murmur3c_2(h * 0x85ebca6b); }
+        constexpr uint32_t murmur3c_0(uint32_t h) { return murmur3c_1(h ^ (h >> 16)); }
+        constexpr uint32_t murmur3c(uint32_t h, size_t len) { return murmur3c_0(h ^ (uint32_t)len); }
+
+        constexpr uint32_t murmur3(char const* str, size_t len) { return murmur3c(murmur3b(str + ((len >> 2) * sizeof(uint32_t)), len & 3, murmur3a(str, len >> 2)), len); }
+        constexpr uint32_t operator"" _murmur3(char const* str, size_t len) { return murmur3(str, len); }
+    }
+
     namespace regex_static {
         // clang-format off
 
@@ -434,36 +470,111 @@ struct formatter {
 };
 
 struct logger {
-    using handler = std::function<void(const clog::record&)>;
+    using handlerfunc1_t = std::function<void(const char*)>;
+    using handlerfunc2_t = std::function<void(const clog::record&)>;
+    using handlerfunc3_t = std::function<void(const clog::record&, const char*)>;
 
-    logger(std::ostream& stream)
-        : output_stream(stream)
-        , output_handler(nullptr)
+    logger()
     {
-    }
-
-    logger(handler handler_)
-        : output_stream(std::cout)
-        , output_handler(handler_)
-    {
+        output_handlers.emplace_back(std::cout);
     }
 
     void operator+=(const clog::record& record)
     {
-        if (output_handler != nullptr) {
-            output_handler(record);
-        } else {
-            clog::formatter::format(record, output_stream);
-            output_stream << std::endl;
+        std::ostringstream os;
+        clog::formatter::format(record, os);
+        for (auto& handler : output_handlers) {
+            handler.output(record, os.str().c_str());
         }
     }
 
-    std::ostream& output_stream;
-    handler output_handler;
+    logger& set_severity(clog::severity severity) &
+    {
+        min_severity = severity;
+        return *this;
+    }
+
+    template <typename... Args>
+    logger& set_handler(Args&&... args)
+    {
+        output_handlers.clear();
+        set_handler_(std::forward<Args>(args)...);
+        return *this;
+    }
+
+    template <typename First, typename... Args>
+    void set_handler_(First&& first, Args&&... args)
+    {
+        output_handlers.emplace_back(first);
+        set_handler_(std::forward<Args>(args)...);
+    }
+
+    template <typename First>
+    void set_handler_(First&& first)
+    {
+        output_handlers.emplace_back(first);
+    }
+
+    // 出力項目の設定
+    // logger& set_outputoption(outputoption&& option)
+    // {
+    // }
+
+    struct handler {
+        handler(handlerfunc1_t func)
+            : output_func1(func)
+            , output_stream(std::cout)
+        {
+        }
+        handler(handlerfunc2_t func)
+            : output_func2(func)
+            , output_stream(std::cout)
+        {
+        }
+        handler(handlerfunc3_t func)
+            : output_func3(func)
+            , output_stream(std::cout)
+        {
+        }
+
+        handler(std::ostream& stream)
+            : output_stream(stream)
+        {
+        }
+
+        handler(const char* filename)
+            : output_filestream(std::make_unique<std::ofstream>(filename))
+            , output_stream(*output_filestream)
+        {
+        }
+
+        void output(const clog::record& record, const char* str)
+        {
+            if (output_func1 != nullptr) {
+                output_func1(str);
+            } else if (output_func2 != nullptr) {
+                output_func2(record);
+            } else if (output_func3 != nullptr) {
+                output_func3(record, str);
+            } else {
+                output_stream << str << std::endl;
+            }
+        }
+
+        std::unique_ptr<std::ofstream> output_filestream;
+        std::ostream& output_stream;
+        handlerfunc1_t output_func1;
+        handlerfunc2_t output_func2;
+        handlerfunc3_t output_func3;
+    };
+
+    clog::severity min_severity;
+    std::vector<handler> output_handlers;
 };
 
 #if defined(_MSC_VER)
-inline void windows_debugger(const clog::record& record)
+inline void
+windows_debugger(const clog::record& record)
 {
     std::ostringstream ss;
     clog::formatter::format(record, ss);
@@ -491,5 +602,25 @@ inline void android_debugger(const clog::record& record)
     __android_log_print(priority, tag, "%s", ss.str().c_str());
 }
 #endif
+
+template <uint32_t InstanceId>
+class instance {
+public:
+    static instance<InstanceId>& get()
+    {
+        static instance<InstanceId> instance;
+        return instance;
+    }
+
+    clog::logger& logger()
+    {
+        return logger_;
+    }
+
+private:
+    clog::logger logger_;
+
+    instance() { }
+};
 
 } // namespace clog
