@@ -44,16 +44,20 @@
 #define CLOG_GET_HASH(str) clog::internal::murmur3::murmur3(str, clog::internal::strlen_static(str))
 
 //
-// option macro
+// overridable macros
 //
 
-// #define CLOG_OPTION_DISABLE_LOGGING
-// #define CLOG_OPTION_MIN_SEVERITY_INFO
-// #define CLOG_OPTION_MIN_SEVERITY_WARN
-// #define CLOG_OPTION_MIN_SEVERITY_ERROR
+// #define CLOG_DISABLE_LOGGING
 
-#if !defined(CLOG_OPTION_OUTPUT_TO)
-#define CLOG_OPTION_OUTPUT_TO std::cout
+#if !defined(CLOG_DEFAULT_MIN_SEVERITY)
+#define CLOG_DEFAULT_MIN_SEVERITY clog::severity::debug
+#endif
+// #define CLOG_DEFAULT_MIN_SEVERITY_INFO
+// #define CLOG_DEFAULT_MIN_SEVERITY_WARN
+// #define CLOG_DEFAULT_MIN_SEVERITY_ERROR
+
+#if !defined(CLOG_DEFAULT_OUTPUT_TO)
+#define CLOG_DEFAULT_OUTPUT_TO std::cout
 #endif
 
 // #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME
@@ -65,11 +69,14 @@
 // #define CLOG_OPTION_DISABLE_OUTPUT_TAG
 
 // clang-format off
-#if !defined(CLOG_OPTION_DENY_TAGS)
-#define CLOG_OPTION_DENY_TAGS { nullptr }
+#if !defined(CLOG_DEFAULT_DISABLE_INSTANCES)
+#define CLOG_DEFAULT_DISABLE_INSTANCES { nullptr }
 #endif
-#if !defined(CLOG_OPTION_DENY_EXCLUDE_TAGS)
-#define CLOG_OPTION_DENY_EXCLUDE_TAGS { nullptr }
+#if !defined(CLOG_DEFAULT_DISABLE_TAGS)
+#define CLOG_DEFAULT_DISABLE_TAGS { nullptr }
+#endif
+#if !defined(CLOG_DEFAULT_DISABLE_TAGS_EXCLUDE)
+#define CLOG_DEFAULT_DISABLE_TAGS_EXCLUDE { nullptr }
 #endif
 // clang-format on
 
@@ -291,18 +298,18 @@ namespace internal {
         return ss.str();
     }
 
-    constexpr const char* deny_tags[] = CLOG_OPTION_DENY_TAGS;
-    constexpr const char* deny_exclude_tags[] = CLOG_OPTION_DENY_EXCLUDE_TAGS;
+    constexpr const char* deny_tags[] = CLOG_DEFAULT_DISABLE_TAGS;
+    constexpr const char* deny_exclude_tags[] = CLOG_DEFAULT_DISABLE_TAGS_EXCLUDE;
 
     constexpr bool can_output_severity(clog::severity severity)
     {
-#if defined(CLOG_OPTION_DISABLE_LOGGING)
+#if defined(CLOG_DISABLE_LOGGING)
         return severity != severity; // false
-#elif defined(CLOG_OPTION_MIN_SEVERITY_INFO)
+#elif defined(CLOG_DEFAULT_MIN_SEVERITY_INFO)
         return severity <= clog::severity::info;
-#elif defined(CLOG_OPTION_MIN_SEVERITY_WARN)
+#elif defined(CLOG_DEFAULT_MIN_SEVERITY_WARN)
         return severity <= clog::severity::warn;
-#elif defined(CLOG_OPTION_MIN_SEVERITY_ERROR)
+#elif defined(CLOG_DEFAULT_MIN_SEVERITY_ERROR)
         return severity <= clog::severity::error;
 #else
         return severity == severity; // true
@@ -470,13 +477,15 @@ struct formatter {
 };
 
 struct logger {
-    using handlerfunc1_t = std::function<void(const char*)>;
-    using handlerfunc2_t = std::function<void(const clog::record&)>;
-    using handlerfunc3_t = std::function<void(const clog::record&, const char*)>;
+    using outputfunc_type1 = std::function<void(const char*)>;
+    using outputfunc_type2 = std::function<void(const clog::record&)>;
+    using outputfunc_type3 = std::function<void(const clog::record&, const char*)>;
 
     logger()
     {
-        output_handlers.emplace_back(std::cout);
+#if defined(CLOG_DEFAULT_OUTPUT_TO)
+        output_handlers.emplace_back(CLOG_DEFAULT_OUTPUT_TO);
+#endif
     }
 
     void operator+=(const clog::record& record)
@@ -498,19 +507,19 @@ struct logger {
     logger& set_handler(Args&&... args)
     {
         output_handlers.clear();
-        set_handler_(std::forward<Args>(args)...);
+        set_handler_internal(std::forward<Args>(args)...);
         return *this;
     }
 
     template <typename First, typename... Args>
-    void set_handler_(First&& first, Args&&... args)
+    void set_handler_internal(First&& first, Args&&... args)
     {
         output_handlers.emplace_back(first);
-        set_handler_(std::forward<Args>(args)...);
+        set_handler_internal(std::forward<Args>(args)...);
     }
 
     template <typename First>
-    void set_handler_(First&& first)
+    void set_handler_internal(First&& first)
     {
         output_handlers.emplace_back(first);
     }
@@ -521,26 +530,12 @@ struct logger {
     // }
 
     struct handler {
-        handler(handlerfunc1_t func)
-            : output_func1(func)
-            , output_stream(std::cout)
-        {
-        }
-        handler(handlerfunc2_t func)
-            : output_func2(func)
-            , output_stream(std::cout)
-        {
-        }
-        handler(handlerfunc3_t func)
-            : output_func3(func)
-            , output_stream(std::cout)
-        {
-        }
-
-        handler(std::ostream& stream)
-            : output_stream(stream)
-        {
-        }
+        // clang-format off
+        handler(outputfunc_type1 func) : output_func1(func) { }
+        handler(outputfunc_type2 func) : output_func2(func) { }
+        handler(outputfunc_type3 func) : output_func3(func) { }
+        handler(std::ostream& stream) : output_stream(stream) { }
+        // clang-format on
 
         handler(const char* filename)
             : output_filestream(std::make_unique<std::ofstream>(filename))
@@ -562,13 +557,13 @@ struct logger {
         }
 
         std::unique_ptr<std::ofstream> output_filestream;
-        std::ostream& output_stream;
-        handlerfunc1_t output_func1;
-        handlerfunc2_t output_func2;
-        handlerfunc3_t output_func3;
+        std::ostream& output_stream = std::cout;
+        const outputfunc_type1 output_func1;
+        const outputfunc_type2 output_func2;
+        const outputfunc_type3 output_func3;
     };
 
-    clog::severity min_severity;
+    clog::severity min_severity = CLOG_DEFAULT_MIN_SEVERITY;
     std::vector<handler> output_handlers;
 };
 
