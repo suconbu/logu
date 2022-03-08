@@ -1,4 +1,4 @@
-﻿#define CLOG_OPTION_DISABLE_LOGGING
+﻿#define CLOG_DISABLE_LOGGING
 #include "clog/clog.hpp"
 
 namespace example {

@@ -17,11 +17,11 @@
 // basic macro
 //
 
-#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, nullptr)
-#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, nullptr)
-#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, nullptr)
-#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, nullptr)
-#define CLOG       CLOG_OUTPUT(clog::severity::none, nullptr)
+#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, "")
+#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, "")
+#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, "")
+#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, "")
+#define CLOG       CLOG_OUTPUT(clog::severity::none, "")
 
 #define CLOG_DEBUG_(tag) CLOG_OUTPUT(clog::severity::debug, tag)
 #define CLOG_INFO_(tag)  CLOG_OUTPUT(clog::severity::info, tag)
@@ -29,18 +29,16 @@
 #define CLOG_ERROR_(tag) CLOG_OUTPUT(clog::severity::error, tag)
 #define CLOG_(tag)       CLOG_OUTPUT(clog::severity::none, tag)
 
-#define CLOG_ARGS(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
+#define CLOG_VARSTR(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
 
-#define CLOG_GET(name) clog::instance<CLOG_GET_HASH(name)>::get().logger()
+#define CLOG_GET(name) clog::logger_holder<CLOG_GET_HASH(name)>::get()
 
 #ifdef _MSC_VER
 #define CLOG_GET_FUNC() __FUNCTION__
 #else
 #define CLOG_GET_FUNC() __PRETTY_FUNCTION__
 #endif
-
-#define CLOG_GET_FILE() clog::internal::basename(__FILE__)
-
+#define CLOG_GET_FILE()    clog::internal::basename(__FILE__)
 #define CLOG_GET_HASH(str) clog::internal::murmur3::murmur3(str, clog::internal::strlen_static(str))
 
 //
@@ -48,13 +46,7 @@
 //
 
 // #define CLOG_DISABLE_LOGGING
-
-#if !defined(CLOG_DEFAULT_MIN_SEVERITY)
-#define CLOG_DEFAULT_MIN_SEVERITY clog::severity::debug
-#endif
-// #define CLOG_DEFAULT_MIN_SEVERITY_INFO
-// #define CLOG_DEFAULT_MIN_SEVERITY_WARN
-// #define CLOG_DEFAULT_MIN_SEVERITY_ERROR
+// #define CLOG_DISABLE_SEVERITY_UPTO
 
 #if !defined(CLOG_DEFAULT_OUTPUT_TO)
 #define CLOG_DEFAULT_OUTPUT_TO std::cout
@@ -69,14 +61,14 @@
 // #define CLOG_OPTION_DISABLE_OUTPUT_TAG
 
 // clang-format off
-#if !defined(CLOG_DEFAULT_DISABLE_INSTANCES)
-#define CLOG_DEFAULT_DISABLE_INSTANCES { nullptr }
+#if !defined(CLOG_DISABLE_INSTANCES)
+#define CLOG_DISABLE_INSTANCES { nullptr }
 #endif
-#if !defined(CLOG_DEFAULT_DISABLE_TAGS)
-#define CLOG_DEFAULT_DISABLE_TAGS { nullptr }
+#if !defined(CLOG_DISABLE_TAG_PATTERNS)
+#define CLOG_DISABLE_TAG_PATTERNS { nullptr }
 #endif
-#if !defined(CLOG_DEFAULT_DISABLE_TAGS_EXCLUDE)
-#define CLOG_DEFAULT_DISABLE_TAGS_EXCLUDE { nullptr }
+#if !defined(CLOG_DISABLE_TAG_PATTERNS_EXCLUDE)
+#define CLOG_DISABLE_TAG_PATTERNS_EXCLUDE { nullptr }
 #endif
 // clang-format on
 
@@ -94,7 +86,7 @@
             return result;                                                     \
         }()) {                                                                 \
     } else                                                                     \
-        clog::logger()                                                         \
+        CLOG_GET(tag)                                                          \
             += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__).ref()
 
 namespace clog {
@@ -298,41 +290,37 @@ namespace internal {
         return ss.str();
     }
 
-    constexpr const char* deny_tags[] = CLOG_DEFAULT_DISABLE_TAGS;
-    constexpr const char* deny_exclude_tags[] = CLOG_DEFAULT_DISABLE_TAGS_EXCLUDE;
+    constexpr const char* disable_tag_patterns[] = CLOG_DISABLE_TAG_PATTERNS;
+    constexpr const char* disable_tag_patterns_exclude[] = CLOG_DISABLE_TAG_PATTERNS_EXCLUDE;
 
     constexpr bool can_output_severity(clog::severity severity)
     {
 #if defined(CLOG_DISABLE_LOGGING)
         return severity != severity; // false
-#elif defined(CLOG_DEFAULT_MIN_SEVERITY_INFO)
-        return severity <= clog::severity::info;
-#elif defined(CLOG_DEFAULT_MIN_SEVERITY_WARN)
-        return severity <= clog::severity::warn;
-#elif defined(CLOG_DEFAULT_MIN_SEVERITY_ERROR)
-        return severity <= clog::severity::error;
+#elif defined(CLOG_DISABLE_SEVERITY_UPTO)
+        return severity <= CLOG_DISABLE_SEVERITY_UPTO;
 #else
         return severity == severity; // true
 #endif
     }
 
-    constexpr bool match_deny_tags(const char* tag)
+    constexpr bool match_disabled_tag(const char* tag)
     {
-        return (deny_tags[0] != nullptr) ?
-            clog::internal::match_list_static(tag, deny_tags, clog::internal::count_of(deny_tags)) :
+        return (disable_tag_patterns[0] != nullptr) ?
+            clog::internal::match_list_static(tag, disable_tag_patterns, clog::internal::count_of(disable_tag_patterns)) :
             false;
     }
 
-    constexpr bool match_deny_exclude_tags(const char* tag)
+    constexpr bool match_disabled_tag_exclude(const char* tag)
     {
-        return (deny_exclude_tags[0] != nullptr) ?
-            clog::internal::match_list_static(tag, deny_exclude_tags, clog::internal::count_of(deny_exclude_tags)) :
+        return (disable_tag_patterns_exclude[0] != nullptr) ?
+            clog::internal::match_list_static(tag, disable_tag_patterns_exclude, clog::internal::count_of(disable_tag_patterns_exclude)) :
             false;
     }
 
     constexpr bool can_output_tag(const char* tag)
     {
-        return (tag != nullptr && match_deny_tags(tag)) ? match_deny_exclude_tags(tag) : true;
+        return (tag != nullptr && match_disabled_tag(tag)) ? match_disabled_tag_exclude(tag) : true;
     }
 
     constexpr bool can_output(clog::severity severity, const char* tag)
@@ -477,14 +465,10 @@ struct formatter {
 };
 
 struct logger {
-    using outputfunc_type1 = std::function<void(const char*)>;
-    using outputfunc_type2 = std::function<void(const clog::record&)>;
-    using outputfunc_type3 = std::function<void(const clog::record&, const char*)>;
-
     logger()
     {
 #if defined(CLOG_DEFAULT_OUTPUT_TO)
-        output_handlers.emplace_back(CLOG_DEFAULT_OUTPUT_TO);
+        set_handler(CLOG_DEFAULT_OUTPUT_TO);
 #endif
     }
 
@@ -492,7 +476,7 @@ struct logger {
     {
         std::ostringstream os;
         clog::formatter::format(record, os);
-        for (auto& handler : output_handlers) {
+        for (auto& handler : handlers) {
             handler.output(record, os.str().c_str());
         }
     }
@@ -506,7 +490,7 @@ struct logger {
     template <typename... Args>
     logger& set_handler(Args&&... args)
     {
-        output_handlers.clear();
+        handlers.clear();
         set_handler_internal(std::forward<Args>(args)...);
         return *this;
     }
@@ -514,15 +498,17 @@ struct logger {
     template <typename First, typename... Args>
     void set_handler_internal(First&& first, Args&&... args)
     {
-        output_handlers.emplace_back(first);
+        handlers.emplace_back(first);
         set_handler_internal(std::forward<Args>(args)...);
     }
 
     template <typename First>
     void set_handler_internal(First&& first)
     {
-        output_handlers.emplace_back(first);
+        handlers.emplace_back(first);
     }
+
+    void set_handler_internal() { }
 
     // 出力項目の設定
     // logger& set_outputoption(outputoption&& option)
@@ -530,10 +516,14 @@ struct logger {
     // }
 
     struct handler {
+        using functype_str = std::function<void(const char*)>;
+        using functype_record = std::function<void(const clog::record&)>;
+        using functype_record_str = std::function<void(const clog::record&, const char*)>;
+
         // clang-format off
-        handler(outputfunc_type1 func) : output_func1(func) { }
-        handler(outputfunc_type2 func) : output_func2(func) { }
-        handler(outputfunc_type3 func) : output_func3(func) { }
+        handler(functype_str func) : output_func_str(func) { }
+        handler(functype_record func) : output_func_record(func) { }
+        handler(functype_record_str func) : output_func_record_str(func) { }
         handler(std::ostream& stream) : output_stream(stream) { }
         // clang-format on
 
@@ -545,12 +535,12 @@ struct logger {
 
         void output(const clog::record& record, const char* str)
         {
-            if (output_func1 != nullptr) {
-                output_func1(str);
-            } else if (output_func2 != nullptr) {
-                output_func2(record);
-            } else if (output_func3 != nullptr) {
-                output_func3(record, str);
+            if (output_func_str != nullptr) {
+                output_func_str(str);
+            } else if (output_func_record != nullptr) {
+                output_func_record(record);
+            } else if (output_func_record_str != nullptr) {
+                output_func_record_str(record, str);
             } else {
                 output_stream << str << std::endl;
             }
@@ -558,13 +548,13 @@ struct logger {
 
         std::unique_ptr<std::ofstream> output_filestream;
         std::ostream& output_stream = std::cout;
-        const outputfunc_type1 output_func1;
-        const outputfunc_type2 output_func2;
-        const outputfunc_type3 output_func3;
+        const functype_str output_func_str;
+        const functype_record output_func_record;
+        const functype_record_str output_func_record_str;
     };
 
-    clog::severity min_severity = CLOG_DEFAULT_MIN_SEVERITY;
-    std::vector<handler> output_handlers;
+    clog::severity min_severity = clog::severity::debug;
+    std::vector<handler> handlers;
 };
 
 #if defined(_MSC_VER)
@@ -598,24 +588,19 @@ inline void android_debugger(const clog::record& record)
 }
 #endif
 
-template <uint32_t InstanceId>
-class instance {
+template <uint32_t LoggerId>
+class logger_holder {
 public:
-    static instance<InstanceId>& get()
+    static clog::logger& get()
     {
-        static instance<InstanceId> instance;
-        return instance;
-    }
-
-    clog::logger& logger()
-    {
-        return logger_;
+        static logger_holder<LoggerId> logger_holder;
+        return logger_holder.logger_;
     }
 
 private:
     clog::logger logger_;
 
-    instance() { }
+    logger_holder() { }
 };
 
 } // namespace clog

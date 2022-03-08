@@ -1,10 +1,10 @@
-﻿#define CLOG_OPTION_DENY_TAGS \
-    {                         \
-        ".*ternal$", "quick"  \
+﻿#define CLOG_DISABLE_TAG_PATTERNS \
+    {                             \
+        ".*ternal$", "quick"      \
     }
-#define CLOG_OPTION_DENY_EXCLUDE_TAGS \
-    {                                 \
-        "^ex.*"                       \
+#define CLOG_DISABLE_TAG_PATTERNS_EXCLUDE \
+    {                                     \
+        "^ex.*"                           \
     }
 #include "clog/clog.hpp"
 

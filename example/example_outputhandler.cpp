@@ -1,5 +1,4 @@
-﻿#define CLOG_OPTION_OUTPUT_TO example_handler
-#include "clog/clog.hpp"
+﻿#include "clog/clog.hpp"
 #include <fstream>
 
 namespace example {
@@ -12,6 +11,8 @@ void example_handler(const clog::record& record)
 void outputhandler_example()
 {
     std::cout << "========== " << __func__ << " ==========" << std::endl;
+
+    CLOG_GET("").set_handler(example_handler);
 
     CLOG_DEBUG << "debug debug debug";
     CLOG_INFO << "info info info";
