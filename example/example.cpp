@@ -107,11 +107,14 @@ void instance_example()
     CLOG_GET("name")
         .set_severity(clog::severity::info)
         .set_handler(example_handler_1, std::cout, "hogeeee.log", clog::windows_debugger);
-    CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "multi handlers";
-    CLOG_GET("name") += clog::record(clog::severity::error, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "multi handlers";
+    CLOG_DEBUG_("name") << "multi handlers";
+    CLOG_ERROR_("name") << "multi handlers";
+    // CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "multi handlers";
+    // CLOG_GET("name") += clog::record(clog::severity::error, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "multi handlers";
     CLOG_GET("name")
         .set_handler();
-    CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "handler nothing";
+    CLOG_ERROR_("name") << "handler nothing";
+    // CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "handler nothing";
 }
 
 } // namespace example

@@ -81,10 +81,11 @@
 #endif
 
 #define CLOG_OUTPUT_INTERNAL(severity, tag)                                    \
-    if (![]() {                                                                \
+    if (![]() -> bool {                                                        \
             constexpr bool result = clog::internal::can_output(severity, tag); \
             return result;                                                     \
-        }()) {                                                                 \
+        }()                                                                    \
+            || !CLOG_GET(tag).can_output(severity)) {                          \
     } else                                                                     \
         CLOG_GET(tag)                                                          \
             += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__).ref()
@@ -481,7 +482,12 @@ struct logger {
         }
     }
 
-    logger& set_severity(clog::severity severity) &
+    bool can_output(clog::severity severity)
+    {
+        return min_severity <= severity;
+    }
+
+    logger& set_severity(clog::severity severity)
     {
         min_severity = severity;
         return *this;
