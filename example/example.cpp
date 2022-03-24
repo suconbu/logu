@@ -115,6 +115,20 @@ void instance_example()
         .set_handler();
     CLOG_ERROR_("name") << "handler nothing";
     // CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "handler nothing";
+    CLOG_GET("name")
+        .set_severity(clog::severity::debug)
+        .set_handler(std::cout)
+        .set_option(clog::option::datetime_year, false)
+        .set_option(clog::option::datetime_microsecond, true)
+        .set_option(clog::option::file, false);
+    CLOG_INFO_("name") << "set option";
+    // #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME
+    // #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME_YEAR
+    // #define CLOG_OPTION_DISABLE_OUTPUT_SEVERITY
+    // #define CLOG_OPTION_DISABLE_OUTPUT_FILE
+    // #define CLOG_OPTION_DISABLE_OUTPUT_FUNC
+    // #define CLOG_OPTION_DISABLE_OUTPUT_LINE
+    // #define CLOG_OPTION_DISABLE_OUTPUT_TAG
 }
 
 } // namespace example

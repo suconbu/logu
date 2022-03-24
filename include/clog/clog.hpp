@@ -5,6 +5,7 @@
 
 #pragma once
 
+#include <array>
 #include <chrono>
 #include <fstream>
 #include <functional>
@@ -23,11 +24,11 @@
 #define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, "")
 #define CLOG       CLOG_OUTPUT(clog::severity::none, "")
 
-#define CLOG_DEBUG_(tag) CLOG_OUTPUT(clog::severity::debug, tag)
-#define CLOG_INFO_(tag)  CLOG_OUTPUT(clog::severity::info, tag)
-#define CLOG_WARN_(tag)  CLOG_OUTPUT(clog::severity::warn, tag)
-#define CLOG_ERROR_(tag) CLOG_OUTPUT(clog::severity::error, tag)
-#define CLOG_(tag)       CLOG_OUTPUT(clog::severity::none, tag)
+#define CLOG_DEBUG_(name) CLOG_OUTPUT(clog::severity::debug, name)
+#define CLOG_INFO_(name)  CLOG_OUTPUT(clog::severity::info, name)
+#define CLOG_WARN_(name)  CLOG_OUTPUT(clog::severity::warn, name)
+#define CLOG_ERROR_(name) CLOG_OUTPUT(clog::severity::error, name)
+#define CLOG_(name)       CLOG_OUTPUT(clog::severity::none, name)
 
 #define CLOG_VARSTR(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
 
@@ -51,14 +52,6 @@
 #if !defined(CLOG_DEFAULT_OUTPUT_TO)
 #define CLOG_DEFAULT_OUTPUT_TO std::cout
 #endif
-
-// #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME
-// #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME_YEAR
-// #define CLOG_OPTION_DISABLE_OUTPUT_SEVERITY
-// #define CLOG_OPTION_DISABLE_OUTPUT_FILE
-// #define CLOG_OPTION_DISABLE_OUTPUT_FUNC
-// #define CLOG_OPTION_DISABLE_OUTPUT_LINE
-// #define CLOG_OPTION_DISABLE_OUTPUT_TAG
 
 // clang-format off
 #if !defined(CLOG_DISABLE_INSTANCES)
@@ -88,7 +81,7 @@
             || !CLOG_GET(tag).can_output(severity)) {                          \
     } else                                                                     \
         CLOG_GET(tag)                                                          \
-            += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__).ref()
+            += clog::record(severity, tag, CLOG_GET_FILE(), CLOG_GET_FUNC(), __LINE__)
 
 namespace clog {
 
@@ -110,6 +103,34 @@ enum severity {
     info,
     debug
 };
+
+enum class option {
+    datetime, // default:true
+    datetime_year, // default:true
+    datetime_microsecond, // default:true
+    severity, // default:true
+    file, // default:true
+    func, // default:true
+    line, // default:true
+    tag // default:true
+};
+
+namespace internal {
+    struct option_array {
+        bool operator[](clog::option index) const { return array[static_cast<int>(index)]; }
+        bool& operator[](clog::option index) { return array[static_cast<int>(index)]; }
+        std::array<bool, 8> array = {
+            true, // datetime
+            true, // datetime_year
+            false, // datetime_microsecond
+            true, // severity
+            true, // file
+            true, // func
+            true, // line
+            true, // tag
+        };
+    };
+}
 
 namespace internal {
     namespace murmur3 {
@@ -379,77 +400,78 @@ struct record {
 };
 
 struct formatter {
-    static void format(const clog::record& record, std::ostream& stream)
+    static void format(const clog::record& record, const clog::internal::option_array& options, std::ostream& stream)
     {
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_DATETIME)
-        datetime(record, stream);
-#endif
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_SEVERITY)
-        severity(record, stream);
-#endif
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FILE)
-        file(record, stream);
-#endif
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FUNC)
-        func(record, stream);
-#endif // CLOG_OPTION_DISABLE_OUTPUT_FUNC
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_TAG)
-        tag(record, stream);
-#endif
+        if (options[clog::option::datetime]) {
+            datetime(record, options, stream);
+        }
+        if (options[clog::option::severity]) {
+            severity(record, options, stream);
+        }
+        if (options[clog::option::file]) {
+            file(record, options, stream);
+        }
+        if (options[clog::option::func]) {
+            func(record, options, stream);
+        }
+        if (options[clog::option::tag]) {
+            tag(record, options, stream);
+        }
+
         stream << record.message();
     }
 
-    static void datetime(const clog::record& record, std::ostream& stream)
+    static void datetime(const clog::record& record, const clog::internal::option_array& options, std::ostream& stream)
     {
         // datetime
         const auto timet = std::chrono::system_clock::to_time_t(record.time);
         struct tm localt = {};
         internal::localtime_s(&localt, &timet);
         char datetime_buf[20];
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_DATETIME_YEAR)
-        const char* datetime_fmt = "%Y-%m-%d %H:%M:%S";
-#else
-        const char* datetime_fmt = "%m-%d %H:%M:%S";
-#endif
+        const char* datetime_fmt = options[clog::option::datetime_year] ? "%Y-%m-%d %H:%M:%S" : "%m-%d %H:%M:%S";
         std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
         stream << "[" << datetime_buf;
-        const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time.time_since_epoch()).count() % 1000;
-        stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
+        if (options[clog::option::datetime_microsecond]) {
+            const auto usec = std::chrono::duration_cast<std::chrono::microseconds>(record.time.time_since_epoch()).count() % 1000000;
+            stream << "." << std::setw(6) << std::setfill('0') << usec << "] ";
+        } else {
+            const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time.time_since_epoch()).count() % 1000;
+            stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
+        }
     }
 
-    static void severity(const clog::record& record, std::ostream& stream)
+    static void severity(const clog::record& record, const clog::internal::option_array& options, std::ostream& stream)
     {
-        // severity
+        (void)options;
         stream << "[" << severity_to_str(record.severity) << "] ";
     }
 
-    static void file(const clog::record& record, std::ostream& stream)
+    static void file(const clog::record& record, const clog::internal::option_array& options, std::ostream& stream)
     {
-        // file
         if (!clog::internal::is_empty(record.file)) {
-#if defined(CLOG_OPTION_DISABLE_OUTPUT_FUNC) && !defined(CLOG_OPTION_DISABLE_OUTPUT_LINE)
-            stream << "[" << record.file << "@" << record.line << "] ";
-#else
-            stream << "[" << record.file << "] ";
-#endif
+            if (options[clog::option::line]) {
+                stream << "[" << record.file << "@" << record.line << "] ";
+            } else {
+                stream << "[" << record.file << "] ";
+            }
         }
     }
 
-    static void func(const clog::record& record, std::ostream& stream)
+    static void func(const clog::record& record, const clog::internal::option_array& options, std::ostream& stream)
     {
         // func/line
         if (!clog::internal::is_empty(record.func)) {
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_LINE)
-            stream << "[" << record.func << "@" << record.line << "] ";
-#else
-            stream << "[" << record.func << "] ";
-#endif
+            if (options[clog::option::line]) {
+                stream << "[" << record.func << "@" << record.line << "] ";
+            } else {
+                stream << "[" << record.func << "] ";
+            }
         }
     }
 
-    static void tag(const clog::record& record, std::ostream& stream)
+    static void tag(const clog::record& record, const clog::internal::option_array& options, std::ostream& stream)
     {
-        // tag
+        (void)options;
         if (!clog::internal::is_empty(record.tag)) {
             stream << "[" << record.tag << "] ";
         }
@@ -476,7 +498,7 @@ struct logger {
     void operator+=(const clog::record& record)
     {
         std::ostringstream os;
-        clog::formatter::format(record, os);
+        clog::formatter::format(record, options, os);
         for (auto& handler : handlers) {
             handler.output(record, os.str().c_str());
         }
@@ -484,7 +506,7 @@ struct logger {
 
     bool can_output(clog::severity severity)
     {
-        return min_severity <= severity;
+        return severity <= min_severity;
     }
 
     logger& set_severity(clog::severity severity)
@@ -516,10 +538,11 @@ struct logger {
 
     void set_handler_internal() { }
 
-    // 出力項目の設定
-    // logger& set_outputoption(outputoption&& option)
-    // {
-    // }
+    logger& set_option(clog::option option, bool enable)
+    {
+        options[option] = enable;
+        return *this;
+    }
 
     struct handler {
         using functype_str = std::function<void(const char*)>;
@@ -561,15 +584,14 @@ struct logger {
 
     clog::severity min_severity = clog::severity::debug;
     std::vector<handler> handlers;
+    clog::internal::option_array options;
 };
 
 #if defined(_MSC_VER)
 inline void
-windows_debugger(const clog::record& record)
+windows_debugger(const char* str)
 {
-    std::ostringstream ss;
-    clog::formatter::format(record, ss);
-    OutputDebugStringA(ss.str().c_str());
+    OutputDebugStringA(str);
 }
 #endif
 
