@@ -4,10 +4,11 @@ project(example VERSION 1.0)
 add_executable(${PROJECT_NAME}
     example/example.cpp
     example/example_severityfilter.cpp
-    example/example_tagfilter.cpp
+    # example/example_tagfilter.cpp
     example/example_disable.cpp
     example/example_fileoutput.cpp
     example/example_outputhandler.cpp
+    example/example_instance.cpp
 )
 
 target_include_directories(${PROJECT_NAME} PRIVATE include)

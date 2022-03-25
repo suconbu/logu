@@ -8,6 +8,8 @@
     }
 #include "clog/clog.hpp"
 
+// tagは廃止した。これは削除する。
+
 namespace example {
 
 namespace tags {

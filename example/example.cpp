@@ -6,7 +6,7 @@ namespace example {
 void severities_example();
 void datatypes_example();
 void severityfilter_example();
-void tagfilter_example();
+// void tagfilter_example();
 void disable_example();
 void format_example();
 void argument_example();
@@ -20,7 +20,7 @@ int main()
     example::severities_example();
     example::datatypes_example();
     example::severityfilter_example();
-    example::tagfilter_example();
+    // example::tagfilter_example();
     example::disable_example();
     example::format_example();
     example::argument_example();
@@ -91,44 +91,7 @@ void argument_example()
     const char* cc = "const char*";
     std::string ss = "std::string";
     void* ptr = nullptr;
-    CLOG << CLOG_VARSTR(n, u, f, cc, ss, "literal", ptr);
-}
-
-void example_handler_1(const char* str)
-{
-    std::cout << "<<< example_handler_1 >>> " << str << std::endl;
-    // std::cout << "<<< example_handler_1 >>> " << record.message() << std::endl;
-}
-
-void instance_example()
-{
-    std::cout << "========== " << __func__ << " ==========" << std::endl;
-
-    CLOG_GET("name")
-        .set_severity(clog::severity::info)
-        .set_handler(example_handler_1, std::cout, "hogeeee.log", clog::windows_debugger);
-    CLOG_DEBUG_("name") << "multi handlers";
-    CLOG_ERROR_("name") << "multi handlers";
-    // CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "multi handlers";
-    // CLOG_GET("name") += clog::record(clog::severity::error, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "multi handlers";
-    CLOG_GET("name")
-        .set_handler();
-    CLOG_ERROR_("name") << "handler nothing";
-    // CLOG_GET("name") += clog::record(clog::severity::debug, nullptr, clog::internal::basename(__FILE__), __func__, 0).ref() << "handler nothing";
-    CLOG_GET("name")
-        .set_severity(clog::severity::debug)
-        .set_handler(std::cout)
-        .set_option(clog::option::datetime_year, false)
-        .set_option(clog::option::datetime_microsecond, true)
-        .set_option(clog::option::file, false);
-    CLOG_INFO_("name") << "set option";
-    // #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME
-    // #define CLOG_OPTION_DISABLE_OUTPUT_DATETIME_YEAR
-    // #define CLOG_OPTION_DISABLE_OUTPUT_SEVERITY
-    // #define CLOG_OPTION_DISABLE_OUTPUT_FILE
-    // #define CLOG_OPTION_DISABLE_OUTPUT_FUNC
-    // #define CLOG_OPTION_DISABLE_OUTPUT_LINE
-    // #define CLOG_OPTION_DISABLE_OUTPUT_TAG
+    CLOG << CLOG_VARS(n, u, f, cc, ss, "literal", ptr);
 }
 
 } // namespace example
