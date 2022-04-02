@@ -487,17 +487,14 @@ public:
         return enable_logging_ && (min_severity_ <= severity) && (severity <= max_severity_);
     }
 
-    logger& set_enable(bool enable)
+    void copy_from(const clog::logger& rhs)
     {
-        enable_logging_ = enable;
-        return *this;
-    }
-
-    logger& set_severity(clog::severity min_severity, clog::severity max_severity = clog::severity::none)
-    {
-        min_severity_ = min_severity;
-        max_severity_ = max_severity;
-        return *this;
+        tagname_ = rhs.tagname_;
+        handlers_ = rhs.handlers_;
+        formatter_ = rhs.formatter_;
+        min_severity_ = rhs.min_severity_;
+        max_severity_ = rhs.max_severity_;
+        enable_logging_ = rhs.enable_logging_;
     }
 
     template <typename... Args>
@@ -512,6 +509,19 @@ public:
     logger& set_formatter(const FormatterType& formatter)
     {
         formatter_ = std::make_unique<FormatterType>(formatter);
+        return *this;
+    }
+
+    logger& set_severity(clog::severity min_severity, clog::severity max_severity = clog::severity::none)
+    {
+        min_severity_ = min_severity;
+        max_severity_ = max_severity;
+        return *this;
+    }
+
+    logger& set_enable(bool enable)
+    {
+        enable_logging_ = enable;
         return *this;
     }
 
@@ -530,7 +540,7 @@ private:
         // clang-format on
 
         handler(const char* filename)
-            : output_filestream_(std::make_unique<std::ofstream>(filename))
+            : output_filestream_(std::make_shared<std::ofstream>(filename))
             , output_stream_(*output_filestream_)
         {
         }
@@ -544,25 +554,25 @@ private:
             } else if (output_func_record_str_ != nullptr) {
                 output_func_record_str_(record, str);
             } else {
-                output_stream_ << str << std::endl;
+                output_stream_.get() << str << std::endl;
             }
         }
 
     private:
-        std::unique_ptr<std::ofstream> output_filestream_;
-        std::ostream& output_stream_ = std::cout;
-        const functype_str output_func_str_;
-        const functype_record output_func_record_;
-        const functype_record_str output_func_record_str_;
+        std::shared_ptr<std::ofstream> output_filestream_;
+        std::reference_wrapper<std::ostream> output_stream_ = std::ref(std::cout);
+        functype_str output_func_str_;
+        functype_record output_func_record_;
+        functype_record_str output_func_record_str_;
     };
 
 private:
     std::string tagname_;
-    std::unique_ptr<clog::formatter_base> formatter_ = std::make_unique<clog::formatter>();
-    bool enable_logging_ = true;
+    std::vector<handler> handlers_;
+    std::shared_ptr<clog::formatter_base> formatter_ = std::make_shared<clog::formatter>();
     clog::severity min_severity_ = clog::severity::debug;
     clog::severity max_severity_ = clog::severity::none;
-    std::vector<handler> handlers_;
+    bool enable_logging_ = true;
 
     template <typename First, typename... Args>
     void set_handler_internal(First&& first, Args&&... args)

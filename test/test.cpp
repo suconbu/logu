@@ -282,6 +282,66 @@ TEST_F(ClogTest, OutputFormat)
     EXPECT_TRUE(std::regex_search(output, std::regex("\\[\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6}\\] test")));
 }
 
+TEST_F(ClogTest, CopyLogger)
+{
+    constexpr auto from = "CopyLoggerFrom";
+    constexpr auto to = "CopyLoggerTo";
+    CLOG_GET_DEFAULT()
+        .set_severity(clog::severity::warn, clog::severity::error)
+        .set_enable(false)
+        .set_formatter(clog::formatter()
+                           .set_option(clog::formatter::option::datetime, false)
+                           .set_option(clog::formatter::option::severity, false)
+                           .set_option(clog::formatter::option::threadid, false)
+                           .set_option(clog::formatter::option::file, false)
+                           .set_option(clog::formatter::option::func, false)
+                           .set_option(clog::formatter::option::tagname, false));
+    CLOG_GET(to).copy_from(CLOG_GET_DEFAULT());
+
+    output.clear();
+    CLOG_DEBUG_(to) << "test";
+    EXPECT_EQ(0, output.length());
+    output.clear();
+    CLOG_INFO_(to) << "test";
+    EXPECT_EQ(0, output.length());
+    output.clear();
+    CLOG_WARN_(to) << "test";
+    EXPECT_EQ(0, output.length());
+    output.clear();
+    CLOG_ERROR_(to) << "test";
+    EXPECT_EQ(0, output.length());
+
+    CLOG_GET(to).set_enable(true);
+
+    output.clear();
+    CLOG_DEBUG_(to) << "test";
+    EXPECT_EQ(0, output.length());
+    output.clear();
+    CLOG_INFO_(to) << "test";
+    EXPECT_EQ(0, output.length());
+    output.clear();
+    CLOG_WARN_(to) << "test";
+    EXPECT_EQ("test", output);
+    output.clear();
+    CLOG_ERROR_(to) << "test";
+    EXPECT_EQ("test", output);
+
+    CLOG_GET(to).set_severity(clog::severity::debug, clog::severity::info);
+
+    output.clear();
+    CLOG_DEBUG_(to) << "test";
+    EXPECT_EQ("test", output);
+    output.clear();
+    CLOG_INFO_(to) << "test";
+    EXPECT_EQ("test", output);
+    output.clear();
+    CLOG_WARN_(to) << "test";
+    EXPECT_EQ(0, output.length());
+    output.clear();
+    CLOG_ERROR_(to) << "test";
+    EXPECT_EQ(0, output.length());
+}
+
 TEST_F(ClogTest, MeasureOverheadOutput1000times)
 {
     constexpr auto name = "MeasureOverhead";
