@@ -1,6 +1,6 @@
 ﻿//
 // Copyright (c) 2022 D.Miwa
-// This software is released under the MIT License.
+// This software is released under the MIT License, see LICENSE.
 //
 
 #pragma once
@@ -11,13 +11,12 @@
 #include <functional>
 #include <iomanip>
 #include <iostream>
+#include <memory>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
 
-//
-// basic macro
-//
+// Basic logging macros
 
 #define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, CLOG_DEFAULT_TAGNAME)
 #define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, CLOG_DEFAULT_TAGNAME)
@@ -25,101 +24,87 @@
 #define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, CLOG_DEFAULT_TAGNAME)
 #define CLOG       CLOG_OUTPUT(clog::severity::none, CLOG_DEFAULT_TAGNAME)
 
-#define CLOG_DEBUG_IF(condition) CLOG_OUTPUT_IF(clog::severity::debug, CLOG_DEFAULT_TAGNAME, condition)
-#define CLOG_INFO_IF(condition)  CLOG_OUTPUT_IF(clog::severity::info, CLOG_DEFAULT_TAGNAME, condition)
-#define CLOG_WARN_IF(condition)  CLOG_OUTPUT_IF(clog::severity::warn, CLOG_DEFAULT_TAGNAME, condition)
-#define CLOG_ERROR_IF(condition) CLOG_OUTPUT_IF(clog::severity::error, CLOG_DEFAULT_TAGNAME, condition)
-#define CLOG_IF(condition)       CLOG_OUTPUT_IF(clog::severity::none, CLOG_DEFAULT_TAGNAME, condition)
-
 #define CLOG_DEBUG_(tagname) CLOG_OUTPUT(clog::severity::debug, tagname)
 #define CLOG_INFO_(tagname)  CLOG_OUTPUT(clog::severity::info, tagname)
 #define CLOG_WARN_(tagname)  CLOG_OUTPUT(clog::severity::warn, tagname)
 #define CLOG_ERROR_(tagname) CLOG_OUTPUT(clog::severity::error, tagname)
 #define CLOG_(tagname)       CLOG_OUTPUT(clog::severity::none, tagname)
 
-#define CLOG_DEBUG_IF_(tagname, condition) CLOG_OUTPUT_IF(clog::severity::debug, tagname, condition)
-#define CLOG_INFO_IF_(tagname, condition)  CLOG_OUTPUT_IF(clog::severity::info, tagname, condition)
-#define CLOG_WARN_IF_(tagname, condition)  CLOG_OUTPUT_IF(clog::severity::warn, tagname, condition)
-#define CLOG_ERROR_IF_(tagname, condition) CLOG_OUTPUT_IF(clog::severity::error, tagname, condition)
-#define CLOG_IF_(tagname, condition)       CLOG_OUTPUT_IF(clog::severity::none, tagname, condition)
-
-#define CLOG_VARSTR(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
-
+// Get logger instance
 #define CLOG_GET(tagname)  clog::internal::logger_holder<CLOG_HASH(tagname)>::get(tagname)
 #define CLOG_GET_DEFAULT() CLOG_GET(CLOG_DEFAULT_TAGNAME)
 
+// Get function name (e.g. "void myclass::myfunc()")
 #ifdef _MSC_VER
 #define CLOG_FUNC() __FUNCTION__
 #else
 #define CLOG_FUNC() __PRETTY_FUNCTION__
 #endif
 
+// Get filename excluding directory path
 #define CLOG_FILE() clog::internal::basename(__FILE__)
 
+// Get hash code from string
 #define CLOG_HASH(str) clog::internal::murmur3::murmur3(str, clog::internal::strlen_static(str))
 
+// String the given arguments together with their values (e.g. "(n, str) -> (123, hello)")
+#define CLOG_VARSTR(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
+
 //
-// overridable macros
+// Internal macro
 //
 
-#if !defined(CLOG_DEFAULT_TAGNAME)
 #define CLOG_DEFAULT_TAGNAME ""
-#endif
-
-// internal macro
 
 // clang-format off
+
 #define CLOG_OUTPUT(severity, tagname)    \
     CLOG_SHOULD_OUTPUT(severity, tagname) \
         CLOG_GET(tagname) += clog::record(severity, tagname, CLOG_FILE(), CLOG_FUNC(), __LINE__)
-
-#define CLOG_OUTPUT_IF(severity, tagname, condition) \
-    if (!(condition)) {                           \
-    } else                                        \
-        CLOG_SHOULD_OUTPUT(severity, tagname)        \
-            CLOG_GET(tagname) += clog::record(severity, tagname, CLOG_FILE(), CLOG_FUNC(), __LINE__)
 
 #if defined(CLOG_DISABLE_LOGGING)
 
 #if defined(_MSC_VER)
 #define CLOG_SHOULD_OUTPUT(severity, tagname) \
-    __pragma(warning(push)) \
-    __pragma(warning(disable : 4127)) \
-    if (true) {} else \
-    __pragma(warning(pop))
+    __pragma(warning(push))                   \
+    __pragma(warning(disable : 4127))         \
+    if (true) { }                             \
+    else __pragma(warning(pop))
 #else // _MSC_VAR
 #define CLOG_SHOULD_OUTPUT(severity, tagname) \
-    if (true) {} else
+    if (true) { } else
 #endif // _MSC_VAR
 
-#else
+#else // CLOG_DISABLE_LOGGING
 
-#define CLOG_SHOULD_OUTPUT(severity, tagname) \
-    if (!CLOG_GET(tagname).should_output(severity)) {} else
+#define CLOG_SHOULD_OUTPUT(severity, tagname)         \
+    if (!CLOG_GET(tagname).should_output(severity)) { } else
 
-#endif
+#endif // CLOG_DISABLE_LOGGING
+
 // clang-format on
 
-namespace clog {
-
-#if defined(_MSC_VER)
-using LPCSTR = const char*;
-extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(LPCSTR lpOutputString);
-#endif
-
 #if defined(_WIN32)
-extern "C" __declspec(dllimport) unsigned long __stdcall GetCurrentThreadId();
+#include <time.h>
 #endif
 
 #if defined(__ANDROID__)
+#if defined(CLOG_ENABLE_PLATFORM_LOGGER_ANDROID)
 #include <android/log.h>
+#endif
 #endif
 
 #if defined(__linux__)
-extern "C" {
-#include <syslog.h>
-}
+#include <unistd.h>
+#if !defined(__BIONIC__)
+#include <sys/syscall.h>
 #endif
+#if defined(CLOG_ENABLE_PLATFORM_LOGGER_LINUX)
+#include <syslog.h>
+#endif
+#endif
+
+namespace clog {
 
 enum severity {
     debug,
@@ -130,35 +115,6 @@ enum severity {
 };
 
 namespace internal {
-    namespace murmur3 {
-        constexpr uint32_t seed = 0;
-
-        constexpr uint32_t to_uint32(char const* key, size_t i = sizeof(uint32_t), uint32_t u32 = 0) { return i ? to_uint32(key, i - 1, (u32 << 8) | key[i - 1]) : u32; }
-
-        constexpr uint32_t murmur3a_5(uint32_t h) { return (h * 5) + 0xe6546b64; }
-        constexpr uint32_t murmur3a_4(uint32_t h) { return murmur3a_5((h << 13) | (h >> 19)); }
-        constexpr uint32_t murmur3a_3(uint32_t k, uint32_t h) { return murmur3a_4(h ^ k); }
-        constexpr uint32_t murmur3a_2(uint32_t k, uint32_t h) { return murmur3a_3(k * 0x1b873593, h); }
-        constexpr uint32_t murmur3a_1(uint32_t k, uint32_t h) { return murmur3a_2((k << 15) | (k >> 17), h); }
-        constexpr uint32_t murmur3a_0(uint32_t k, uint32_t h) { return murmur3a_1(k * 0xcc9e2d51, h); }
-        constexpr uint32_t murmur3a(char const* key, size_t i, uint32_t h = seed) { return i ? murmur3a(key + sizeof(uint32_t), i - 1, murmur3a_0(to_uint32(key), h)) : h; }
-
-        constexpr uint32_t murmur3b_3(uint32_t k, uint32_t h) { return h ^ k; }
-        constexpr uint32_t murmur3b_2(uint32_t k, uint32_t h) { return murmur3b_3(k * 0x1b873593, h); }
-        constexpr uint32_t murmur3b_1(uint32_t k, uint32_t h) { return murmur3b_2((k << 15) | (k >> 17), h); }
-        constexpr uint32_t murmur3b_0(uint32_t k, uint32_t h) { return murmur3b_1(k * 0xcc9e2d51, h); }
-        constexpr uint32_t murmur3b(char const* key, size_t i, uint32_t h) { return i ? murmur3b_0(to_uint32(key, i), h) : h; }
-
-        constexpr uint32_t murmur3c_4(uint32_t h) { return h ^ (h >> 16); }
-        constexpr uint32_t murmur3c_3(uint32_t h) { return murmur3c_4(h * 0xc2b2ae35); }
-        constexpr uint32_t murmur3c_2(uint32_t h) { return murmur3c_3(h ^ (h >> 13)); }
-        constexpr uint32_t murmur3c_1(uint32_t h) { return murmur3c_2(h * 0x85ebca6b); }
-        constexpr uint32_t murmur3c_0(uint32_t h) { return murmur3c_1(h ^ (h >> 16)); }
-        constexpr uint32_t murmur3c(uint32_t h, size_t len) { return murmur3c_0(h ^ (uint32_t)len); }
-
-        constexpr uint32_t murmur3(char const* str, size_t len) { return murmur3c(murmur3b(str + ((len >> 2) * sizeof(uint32_t)), len & 3, murmur3a(str, len >> 2)), len); }
-        constexpr uint32_t operator"" _murmur3(char const* str, size_t len) { return murmur3(str, len); }
-    }
 
     constexpr char path_separator()
     {
@@ -195,6 +151,66 @@ namespace internal {
         ::localtime_r(time, t);
 #endif
     }
+
+    constexpr bool is_null_or_empty(const char* s)
+    {
+        return s == nullptr || *s == '\0';
+    }
+
+#if defined(_WIN32)
+    extern "C" __declspec(dllimport) unsigned long __stdcall GetCurrentThreadId();
+#endif
+    inline uint64_t get_threadid()
+    {
+#if defined(_WIN32)
+        return static_cast<uint64_t>(GetCurrentThreadId());
+#elif defined(__BIONIC__)
+        return gettid();
+#elif defined(__linux__)
+        return static_cast<uint64_t>(syscall(__NR_gettid));
+#else
+        return 0;
+#endif
+    }
+
+    namespace murmur3 {
+        constexpr uint32_t seed = 0;
+
+        constexpr uint32_t to_uint32(char const* key, size_t i = sizeof(uint32_t), uint32_t u32 = 0) { return i ? to_uint32(key, i - 1, (u32 << 8) | key[i - 1]) : u32; }
+
+        constexpr uint32_t murmur3a_5(uint32_t h) { return (h * 5) + 0xe6546b64; }
+        constexpr uint32_t murmur3a_4(uint32_t h) { return murmur3a_5((h << 13) | (h >> 19)); }
+        constexpr uint32_t murmur3a_3(uint32_t k, uint32_t h) { return murmur3a_4(h ^ k); }
+        constexpr uint32_t murmur3a_2(uint32_t k, uint32_t h) { return murmur3a_3(k * 0x1b873593, h); }
+        constexpr uint32_t murmur3a_1(uint32_t k, uint32_t h) { return murmur3a_2((k << 15) | (k >> 17), h); }
+        constexpr uint32_t murmur3a_0(uint32_t k, uint32_t h) { return murmur3a_1(k * 0xcc9e2d51, h); }
+        constexpr uint32_t murmur3a(char const* key, size_t i, uint32_t h = seed) { return i ? murmur3a(key + sizeof(uint32_t), i - 1, murmur3a_0(to_uint32(key), h)) : h; }
+
+        constexpr uint32_t murmur3b_3(uint32_t k, uint32_t h) { return h ^ k; }
+        constexpr uint32_t murmur3b_2(uint32_t k, uint32_t h) { return murmur3b_3(k * 0x1b873593, h); }
+        constexpr uint32_t murmur3b_1(uint32_t k, uint32_t h) { return murmur3b_2((k << 15) | (k >> 17), h); }
+        constexpr uint32_t murmur3b_0(uint32_t k, uint32_t h) { return murmur3b_1(k * 0xcc9e2d51, h); }
+        constexpr uint32_t murmur3b(char const* key, size_t i, uint32_t h) { return i ? murmur3b_0(to_uint32(key, i), h) : h; }
+
+        constexpr uint32_t murmur3c_4(uint32_t h) { return h ^ (h >> 16); }
+        constexpr uint32_t murmur3c_3(uint32_t h) { return murmur3c_4(h * 0xc2b2ae35); }
+        constexpr uint32_t murmur3c_2(uint32_t h) { return murmur3c_3(h ^ (h >> 13)); }
+        constexpr uint32_t murmur3c_1(uint32_t h) { return murmur3c_2(h * 0x85ebca6b); }
+        constexpr uint32_t murmur3c_0(uint32_t h) { return murmur3c_1(h ^ (h >> 16)); }
+        constexpr uint32_t murmur3c(uint32_t h, size_t len) { return murmur3c_0(h ^ (uint32_t)len); }
+
+        constexpr uint32_t murmur3(char const* str, size_t len) { return murmur3c(murmur3b(str + ((len >> 2) * sizeof(uint32_t)), len & 3, murmur3a(str, len >> 2)), len); }
+        constexpr uint32_t operator"" _murmur3(char const* str, size_t len) { return murmur3(str, len); }
+    }
+
+    class noncopyable {
+    protected:
+        noncopyable() = default;
+
+    private:
+        noncopyable(const noncopyable&);
+        noncopyable& operator=(const noncopyable&);
+    };
 
     template <typename ValueType>
     struct output_wrapper {
@@ -236,9 +252,13 @@ namespace internal {
     inline std::string args_to_string(const char* argstr, Args... args)
     {
         std::ostringstream ss;
+#if defined(_MSC_VER)
 #pragma warning(disable : 4127)
         if (0 < sizeof...(args)) {
 #pragma warning(default : 4127)
+#else
+        if (0 < sizeof...(args)) {
+#endif
             ss << "(" << argstr << ") -> (";
             output_args(ss, args...);
             ss << ") ";
@@ -250,58 +270,30 @@ namespace internal {
         return ss.str();
     }
 
-    constexpr bool is_empty(const char* s)
-    {
-        return s == nullptr || *s == '\0';
-    }
-
-    inline uint64_t get_tid()
-    {
-#if defined(_WIN32)
-        return static_cast<uint64_t>(GetCurrentThreadId());
-#elif defined(__linux__)
-        return static_cast<uint64_t>(::syscall(__NR_gettid));
-#elif defined(__APPLE__)
-        uint64_t threadid;
-        pthread_threadid_np(NULL, &threadid);
-        return threadid;
-#else
-        return 0;
-#endif
-    }
-
-    class noncopyable {
-    protected:
-        noncopyable() { }
-
-    private:
-        noncopyable(const noncopyable&);
-        noncopyable& operator=(const noncopyable&);
-    };
 } // namespace internal
 
 class record {
 public:
-    record(clog::severity severity_, const char* tagname_, const char* file_, const char* func_, size_t line_)
-        : severity(severity_)
-        , tagname(tagname_)
-        , file(file_)
-        , func(func_)
-        , line(line_)
-        , threadid(clog::internal::get_tid())
-        , time(std::chrono::system_clock::now())
+    record(clog::severity severity, const char* tagname, const char* file, const char* func, size_t line)
+        : severity_(severity)
+        , tagname_(tagname)
+        , file_(file)
+        , func_(func)
+        , line_(line)
+        , threadid_(clog::internal::get_threadid())
+        , time_(std::chrono::system_clock::now())
     {
     }
 
     record() = delete;
 
-    const clog::severity severity;
-    const char* const tagname;
-    const char* const file;
-    const char* const func;
-    const size_t line;
-    const uint64_t threadid;
-    const std::chrono::system_clock::time_point time;
+    clog::severity severity() const { return severity_; };
+    const char* tagname() const { return tagname_; };
+    const char* file() const { return file_; };
+    const char* func() const { return func_; };
+    size_t line() const { return line_; };
+    uint64_t threadid() const { return threadid_; };
+    std::chrono::system_clock::time_point time() const { return time_; };
 
     template <typename Type>
     clog::record& operator<<(const Type& data)
@@ -325,6 +317,13 @@ public:
     }
 
 private:
+    const clog::severity severity_;
+    const char* const tagname_;
+    const char* const file_;
+    const char* const func_;
+    const size_t line_;
+    const uint64_t threadid_;
+    const std::chrono::system_clock::time_point time_;
     std::ostringstream ss_;
 };
 
@@ -376,10 +375,19 @@ public:
         return stream.str();
     }
 
-    formatter& set_option(option option, bool enable)
+    formatter& set_option(option option_, bool enable)
     {
-        options_[option] = enable;
+        options_[option_] = enable;
         return *this;
+    }
+
+    static constexpr const char* severity_to_str(clog::severity severity)
+    {
+        return (severity == clog::severity::debug) ? "DEBUG" :
+            (severity == clog::severity::info)     ? "INFO " :
+            (severity == clog::severity::warn)     ? "WARN " :
+            (severity == clog::severity::error)    ? "ERROR" :
+                                                     "-----";
     }
 
 private:
@@ -397,7 +405,7 @@ private:
 
     void datetime(const clog::record& record, std::ostream& stream) const
     {
-        const auto timet = std::chrono::system_clock::to_time_t(record.time);
+        const auto timet = std::chrono::system_clock::to_time_t(record.time());
         struct tm localt = {};
         internal::localtime_s(&localt, &timet);
         char datetime_buf[20];
@@ -405,60 +413,51 @@ private:
         std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
         stream << "[" << datetime_buf;
         if (options_.at(option::datetime_microsecond)) {
-            const auto usec = std::chrono::duration_cast<std::chrono::microseconds>(record.time.time_since_epoch()).count() % 1000000;
+            const auto usec = std::chrono::duration_cast<std::chrono::microseconds>(record.time().time_since_epoch()).count() % 1000000;
             stream << "." << std::setw(6) << std::setfill('0') << usec << "] ";
         } else {
-            const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time.time_since_epoch()).count() % 1000;
+            const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time().time_since_epoch()).count() % 1000;
             stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
         }
     }
 
     void severity(const clog::record& record, std::ostream& stream) const
     {
-        stream << "[" << severity_to_str(record.severity) << "] ";
+        stream << "[" << severity_to_str(record.severity()) << "] ";
     }
 
     void threadid(const clog::record& record, std::ostream& stream) const
     {
-        stream << "[" << record.threadid << "] ";
+        stream << "[" << record.threadid() << "] ";
     }
 
     void file(const clog::record& record, std::ostream& stream) const
     {
-        if (!clog::internal::is_empty(record.file)) {
+        if (!clog::internal::is_null_or_empty(record.file())) {
             if (options_.at(option::line)) {
-                stream << "[" << record.file << "@" << record.line << "] ";
+                stream << "[" << record.file() << "@" << record.line() << "] ";
             } else {
-                stream << "[" << record.file << "] ";
+                stream << "[" << record.file() << "] ";
             }
         }
     }
 
     void func(const clog::record& record, std::ostream& stream) const
     {
-        if (!clog::internal::is_empty(record.func)) {
+        if (!clog::internal::is_null_or_empty(record.func())) {
             if (options_.at(option::line)) {
-                stream << "[" << record.func << "@" << record.line << "] ";
+                stream << "[" << record.func() << "@" << record.line() << "] ";
             } else {
-                stream << "[" << record.func << "] ";
+                stream << "[" << record.func() << "] ";
             }
         }
     }
 
     void tagname(const clog::record& record, std::ostream& stream) const
     {
-        if (!clog::internal::is_empty(record.tagname)) {
-            stream << "[" << record.tagname << "] ";
+        if (!clog::internal::is_null_or_empty(record.tagname())) {
+            stream << "[" << record.tagname() << "] ";
         }
-    }
-
-    static constexpr const char* severity_to_str(clog::severity severity)
-    {
-        return (severity == clog::severity::debug) ? "DEBUG" :
-            (severity == clog::severity::info)     ? "INFO " :
-            (severity == clog::severity::warn)     ? "WARN " :
-            (severity == clog::severity::error)    ? "ERROR" :
-                                                     "-----";
     }
 };
 
@@ -467,7 +466,12 @@ public:
     logger(const char* tagname)
         : tagname_(tagname)
     {
+#if defined(CLOG_ENABLE_PLATFORM_LOGGER_WINDOWS) || defined(CLOG_ENABLE_PLATFORM_LOGGER_ANDROID) || defined(CLOG_ENABLE_PLATFORM_LOGGER_LINUX)
+        void platform_logger(const clog::record& record, const char* str);
+        set_handler(std::cout, platform_logger);
+#else
         set_handler(std::cout);
+#endif
     }
 
     logger() = delete;
@@ -476,8 +480,8 @@ public:
     {
         if (formatter_) {
             const auto str = formatter_->format(record);
-            for (auto& handler : handlers_) {
-                handler.output(record, str.c_str());
+            for (auto& h : handlers_) {
+                h.output(record, str.c_str());
             }
         }
     }
@@ -508,7 +512,7 @@ public:
     template <typename FormatterType>
     logger& set_formatter(const FormatterType& formatter)
     {
-        formatter_ = std::make_unique<FormatterType>(formatter);
+        formatter_ = std::unique_ptr<clog::formatter_base>(new FormatterType(formatter));
         return *this;
     }
 
@@ -592,7 +596,7 @@ private:
 
 namespace internal {
     template <uint32_t InstanceId>
-    class logger_holder : noncopyable {
+    class logger_holder : clog::internal::noncopyable {
     public:
         static clog::logger& get(const char* tagname)
         {
@@ -610,10 +614,14 @@ namespace internal {
     };
 } // namespace internal
 
-namespace handler {
-    inline void windows_debugger(const char* str)
+namespace internal {
+
+#if defined(_MSC_VER) && defined(CLOG_ENABLE_PLATFORM_LOGGER_WINDOWS)
+    extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
+#endif
+    inline void windows_debugger_handler(const char* str)
     {
-#if defined(_MSC_VER)
+#if defined(_MSC_VER) && defined(CLOG_ENABLE_PLATFORM_LOGGER_WINDOWS)
         OutputDebugStringA(str);
         OutputDebugStringA("\n");
 #else
@@ -621,21 +629,18 @@ namespace handler {
 #endif
     }
 
-    inline void android_debugger(const clog::record& record)
+    inline void android_debugger_handler(const clog::record& record)
     {
-#if defined(__ANDROID__)
-        const android_LogPriority priority = (record.severity == clog::severity::debug) ? ANDROID_LOG_DEBUG :
-            (record.severity == clog::severity::info)                                   ? ANDROID_LOG_INFO :
-            (record.severity == clog::severity::warn)                                   ? ANDROID_LOG_WARN :
-            (record.severity == clog::severity::error)                                  ? ANDROID_LOG_ERROR :
-                                                                                          ANDROID_LOG_FATAL;
-        const char* tag = clog::internal::is_empty((record.tagname) ? "(default)" : record.tagname;
+#if defined(__ANDROID__) && defined(CLOG_ENABLE_PLATFORM_LOGGER_ANDROID)
+        const android_LogPriority priority = (record.severity() == clog::severity::debug) ? ANDROID_LOG_DEBUG :
+            (record.severity() == clog::severity::info)                                   ? ANDROID_LOG_INFO :
+            (record.severity() == clog::severity::warn)                                   ? ANDROID_LOG_WARN :
+            (record.severity() == clog::severity::error)                                  ? ANDROID_LOG_ERROR :
+                                                                                            ANDROID_LOG_FATAL;
+        const char* tag = clog::internal::is_null_or_empty(record.tagname()) ? "(default)" : record.tagname();
         std::ostringstream ss;
-        if (!clog::internal::is_empty(record.file)) {
-            ss << "[" << record.file << "] ";
-        }
-        if (!clog::internal::is_empty(record.func)) {
-            ss << "[" << record.func << "@" << record.line << "] ";
+        if (!clog::internal::is_null_or_empty(record.func())) {
+            ss << "[" << record.func() << "@" << record.line() << "] ";
         }
         ss << record.message();
         __android_log_print(priority, tag, "%s", ss.str().c_str());
@@ -644,20 +649,36 @@ namespace handler {
 #endif
     }
 
-    inline void linux_syslog(const clog::record& record, const char* str)
+    inline void linux_syslog_handler(const clog::record& record, const char* str)
     {
-#if defined(__linux__)
-        const int level = (record.severity == clog::severity::debug) ? LOG_DEBUG :
-            (record.severity == clog::severity::info)                ? LOG_INFO :
-            (record.severity == clog::severity::warn)                ? LOG_WARNING :
-            (record.severity == clog::severity::error)               ? LOG_ERR :
-                                                                       LOG_CRIT;
+#if defined(__linux__) && defined(CLOG_ENABLE_PLATFORM_LOGGER_LINUX)
+        const int level = (record.severity() == clog::severity::debug) ? LOG_DEBUG :
+            (record.severity() == clog::severity::info)                ? LOG_INFO :
+            (record.severity() == clog::severity::warn)                ? LOG_WARNING :
+            (record.severity() == clog::severity::error)               ? LOG_ERR :
+                                                                         LOG_CRIT;
         syslog(LOG_USER | level, "%s", str);
 #else
         (void)record;
         (void)str;
 #endif
     }
-} // namespace handler
+
+} // namespace internal
+
+inline void platform_logger(const clog::record& record, const char* str)
+{
+    (void)record;
+    (void)str;
+#if defined(_MSC_VER)
+    clog::internal::windows_debugger_handler(str);
+#endif
+#if defined(__ANDROID__)
+    clog::internal::android_debugger_handler(record);
+#endif
+#if defined(__linux__)
+    clog::internal::linux_syslog_handler(record, str);
+#endif
+}
 
 } // namespace clog

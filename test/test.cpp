@@ -1,26 +1,24 @@
 ﻿#include "clog/clog.hpp"
+
 #include "gtest/gtest.h"
 
 #include <regex>
 #include <string>
 #include <vector>
 
+//#define TEST_ENABLE_OUTPUT_TO_STDOUT
+
 class ClogTest : public ::testing::Test {
 protected:
-    virtual void SetUp()
-    {
-        CLOG_GET_DEFAULT().set_handler([&](const clog::record& record, const char* str) {
-            output = str;
-        });
-    }
+    virtual void SetUp() { }
     virtual void TearDown() { }
 
-    std::string PatternString(clog::severity severity)
+    std::string GetPattern(clog::severity severity)
     {
-        return PatternString(severity, "");
+        return GetPattern(severity, "");
     }
 
-    std::string PatternString(clog::severity severity, std::string name)
+    std::string GetPattern(clog::severity severity, std::string name)
     {
         std::string s;
         s += "\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\] ";
@@ -30,122 +28,74 @@ protected:
             (severity == clog::severity::error)                        ? "ERROR" :
                                                                          "-----";
         s += "\\[" + severity_str + "\\] ";
-        s += "\\[\\d+\\] ";
-        s += "\\[\\w+::TestBody@\\d+\\] ";
+        s += "\\[\\d+\\] "; // threadid
+        s += "\\[[^@]+@\\d+\\] "; // func@line
         if (!name.empty()) {
-            s += "\\[" + name + "\\] ";
+            s += "\\[" + name + "\\] "; // tagname
         }
         return s;
     }
-
-    std::string output;
 };
 
 TEST_F(ClogTest, Severity)
 {
-    output.clear();
+    std::string str;
+
+    testing::internal::CaptureStdout();
     CLOG_DEBUG << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::debug) + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::debug) + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_INFO << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::info) + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::info) + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_WARN << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::warn) + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::warn) + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_ERROR << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::error) + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::error) + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::none) + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::none) + "test")));
 
-    CLOG_GET("name").set_handler([&](const clog::record& record, const char* str) {
-        output = str;
-    });
-
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_DEBUG_("name") << "test";
-    auto ss = PatternString(clog::severity::debug, "name") + "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::debug, "name") + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::debug, "name") + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_INFO_("name") << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::info, "name") + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::info, "name") + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_WARN_("name") << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::warn, "name") + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::warn, "name") + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_ERROR_("name") << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::error, "name") + "test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::error, "name") + "test")));
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_("name") << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::none, "name") + "test")));
-}
-
-TEST_F(ClogTest, Condition)
-{
-    constexpr bool bfalse = false;
-    constexpr bool btrue = true;
-
-    // true
-
-    output.clear();
-    CLOG_DEBUG_IF(btrue) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::debug) + "test")));
-
-    output.clear();
-    CLOG_INFO_IF(btrue) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::info) + "test")));
-
-    output.clear();
-    CLOG_WARN_IF(btrue) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::warn) + "test")));
-
-    output.clear();
-    CLOG_ERROR_IF(btrue) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::error) + "test")));
-
-    output.clear();
-    CLOG_IF(btrue) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex(PatternString(clog::severity::none) + "test")));
-
-    // false
-
-    output.clear();
-    CLOG_DEBUG_IF(bfalse) << "test";
-    EXPECT_EQ(0, output.length());
-
-    output.clear();
-    CLOG_INFO_IF(bfalse) << "test";
-    EXPECT_EQ(0, output.length());
-
-    output.clear();
-    CLOG_WARN_IF(bfalse) << "test";
-    EXPECT_EQ(0, output.length());
-
-    output.clear();
-    CLOG_ERROR_IF(bfalse) << "test";
-    EXPECT_EQ(0, output.length());
-
-    output.clear();
-    CLOG_IF(bfalse) << "test";
-    EXPECT_EQ(0, output.length());
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(clog::severity::none, "name") + "test")));
 }
 
 TEST_F(ClogTest, OutputFormat)
 {
     constexpr auto name = "OutputFormat";
-    CLOG_GET(name)
-        .set_handler([&](const clog::record& record, const char* str) {
-            output = str;
-        });
+    std::string str;
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -156,9 +106,11 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, false)
                            .set_option(clog::formatter::option::line, false)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -169,9 +121,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, false)
                            .set_option(clog::formatter::option::line, false)
                            .set_option(clog::formatter::option::tagname, true));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[OutputFormat\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[OutputFormat\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -182,9 +135,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, true)
                            .set_option(clog::formatter::option::line, false)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[test\\.cpp\\] \\[\\w+::TestBody\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[test\\.cpp\\] \\[[^\\]]+\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -195,9 +149,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, true)
                            .set_option(clog::formatter::option::line, true)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[test\\.cpp@\\d+\\] \\[\\w+::TestBody@\\d+\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[test\\.cpp@\\d+\\] \\[[^@]+@\\d+\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -208,9 +163,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, false)
                            .set_option(clog::formatter::option::line, true)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[test\\.cpp@\\d+\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[test\\.cpp@\\d+\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -221,9 +177,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, true)
                            .set_option(clog::formatter::option::line, true)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[\\w+::TestBody@\\d+\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[[^@]+@\\d+\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -234,9 +191,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, false)
                            .set_option(clog::formatter::option::line, false)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[\\d+\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[\\d+\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -247,9 +205,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, false)
                            .set_option(clog::formatter::option::line, false)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -262,9 +221,10 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, false)
                            .set_option(clog::formatter::option::line, false)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3}\\] test")));
 
     CLOG_GET(name)
         .set_formatter(clog::formatter()
@@ -277,15 +237,18 @@ TEST_F(ClogTest, OutputFormat)
                            .set_option(clog::formatter::option::func, false)
                            .set_option(clog::formatter::option::line, false)
                            .set_option(clog::formatter::option::tagname, false));
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_TRUE(std::regex_search(output, std::regex("\\[\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6}\\] test")));
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_search(str, std::regex("\\[\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6}\\] test")));
 }
 
 TEST_F(ClogTest, CopyLogger)
 {
     constexpr auto from = "CopyLoggerFrom";
     constexpr auto to = "CopyLoggerTo";
+    std::string str;
+
     CLOG_GET_DEFAULT()
         .set_severity(clog::severity::warn, clog::severity::error)
         .set_enable(false)
@@ -298,74 +261,99 @@ TEST_F(ClogTest, CopyLogger)
                            .set_option(clog::formatter::option::tagname, false));
     CLOG_GET(to).copy_from(CLOG_GET_DEFAULT());
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_DEBUG_(to) << "test";
-    EXPECT_EQ(0, output.length());
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
+    testing::internal::CaptureStdout();
     CLOG_INFO_(to) << "test";
-    EXPECT_EQ(0, output.length());
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
+    testing::internal::CaptureStdout();
     CLOG_WARN_(to) << "test";
-    EXPECT_EQ(0, output.length());
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
+    testing::internal::CaptureStdout();
     CLOG_ERROR_(to) << "test";
-    EXPECT_EQ(0, output.length());
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
 
     CLOG_GET(to).set_enable(true);
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_DEBUG_(to) << "test";
-    EXPECT_EQ(0, output.length());
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
+    testing::internal::CaptureStdout();
     CLOG_INFO_(to) << "test";
-    EXPECT_EQ(0, output.length());
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
+    testing::internal::CaptureStdout();
     CLOG_WARN_(to) << "test";
-    EXPECT_EQ("test", output);
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ("test\n", str);
+    testing::internal::CaptureStdout();
     CLOG_ERROR_(to) << "test";
-    EXPECT_EQ("test", output);
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ("test\n", str);
 
     CLOG_GET(to).set_severity(clog::severity::debug, clog::severity::info);
 
-    output.clear();
+    testing::internal::CaptureStdout();
     CLOG_DEBUG_(to) << "test";
-    EXPECT_EQ("test", output);
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ("test\n", str);
+    testing::internal::CaptureStdout();
     CLOG_INFO_(to) << "test";
-    EXPECT_EQ("test", output);
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ("test\n", str);
+    testing::internal::CaptureStdout();
     CLOG_WARN_(to) << "test";
-    EXPECT_EQ(0, output.length());
-    output.clear();
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
+    testing::internal::CaptureStdout();
     CLOG_ERROR_(to) << "test";
-    EXPECT_EQ(0, output.length());
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
 }
 
-TEST_F(ClogTest, MeasureOverheadOutput1000times)
+TEST_F(ClogTest, Format)
+{
+    constexpr auto name = "Format";
+    CLOG_GET(name)
+        .set_formatter(clog::formatter()
+                           .set_option(clog::formatter::option::datetime, false)
+                           .set_option(clog::formatter::option::severity, false)
+                           .set_option(clog::formatter::option::threadid, false)
+                           .set_option(clog::formatter::option::file, false)
+                           .set_option(clog::formatter::option::func, false)
+                           .set_option(clog::formatter::option::tagname, false));
+    testing::internal::CaptureStdout();
+    CLOG_(name).format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "none none none");
+    std::string str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ("1 0xFFFF 3.142 none none none\n", str);
+}
+
+TEST_F(ClogTest, MeasureOverheadOutput)
 {
     constexpr auto name = "MeasureOverhead";
-    CLOG_GET(name)
-        .set_handler([&](const clog::record& record, const char* str) {
-            output = str;
-        })
-        .set_severity(clog::severity::error);
+    CLOG_GET(name).set_severity(clog::severity::error);
+    testing::internal::CaptureStdout();
     for (int i = 0; i < 1000; ++i) {
         CLOG_ERROR_(name) << "test";
     }
+    testing::internal::GetCapturedStdout();
 }
 
-TEST_F(ClogTest, MeasureOverheadSkip1000000times)
+TEST_F(ClogTest, MeasureOverheadSkip)
 {
     constexpr auto name = "MeasureOverhead";
-    CLOG_GET(name)
-        .set_handler([&](const clog::record& record, const char* str) {
-            output = str;
-        })
-        .set_severity(clog::severity::error);
+    CLOG_GET(name).set_severity(clog::severity::error);
+    testing::internal::CaptureStdout();
     for (int i = 0; i < 1000000; ++i) {
         CLOG_DEBUG_(name) << "test";
     }
+    testing::internal::GetCapturedStdout();
 }
 
 struct test_formatter : public clog::formatter_base {
@@ -378,11 +366,9 @@ struct test_formatter : public clog::formatter_base {
 TEST_F(ClogTest, CustomFormatter)
 {
     constexpr auto name = "CustomFormatter";
-    CLOG_GET(name)
-        .set_handler([&](const clog::record& record, const char* str) {
-            output = str;
-        })
-        .set_formatter(test_formatter());
+    CLOG_GET(name).set_formatter(test_formatter());
+    testing::internal::CaptureStdout();
     CLOG_(name) << "test";
-    EXPECT_EQ("testtest", output);
+    std::string str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ("testtest\n", str);
 }
