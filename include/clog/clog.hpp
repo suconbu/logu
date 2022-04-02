@@ -342,88 +342,104 @@ private:
 
 class formatter {
 public:
-    static void format(const clog::record& record, const clog::internal::formatoption_map& formatoptions, std::ostream& stream)
+    formatter() { }
+
+    formatter& set_option(clog::formatoption option, bool enable)
     {
-        const auto fmt = formatter(record, formatoptions);
-        fmt.datetime(stream);
-        fmt.severity(stream);
-        fmt.threadid(stream);
-        fmt.file(stream);
-        fmt.func(stream);
-        fmt.tagname(stream);
+        options_[option] = enable;
+        return *this;
+    }
+
+    void format(const clog::record& record, std::ostream& stream)
+    {
+        if (options_.at(clog::formatoption::datetime)) {
+            datetime(record, stream);
+        }
+        if (options_.at(clog::formatoption::severity)) {
+            severity(record, stream);
+        }
+        if (options_.at(clog::formatoption::threadid)) {
+            threadid(record, stream);
+        }
+        if (options_.at(clog::formatoption::file)) {
+            file(record, stream);
+        }
+        if (options_.at(clog::formatoption::func)) {
+            func(record, stream);
+        }
+        if (options_.at(clog::formatoption::tagname)) {
+            tagname(record, stream);
+        }
         stream << record.message();
     }
 
 private:
-    const clog::record& record_;
-    const clog::internal::formatoption_map& formatoptions_;
+    clog::internal::formatoption_map options_ = {
+        { clog::formatoption::datetime, true },
+        { clog::formatoption::datetime_year, true },
+        { clog::formatoption::datetime_microsecond, false },
+        { clog::formatoption::severity, true },
+        { clog::formatoption::threadid, true },
+        { clog::formatoption::file, false },
+        { clog::formatoption::func, true },
+        { clog::formatoption::line, true },
+        { clog::formatoption::tagname, true }
+    };
 
-    formatter(const clog::record& record, const clog::internal::formatoption_map& formatoptions)
-        : record_(record)
-        , formatoptions_(formatoptions)
+    void datetime(const clog::record& record, std::ostream& stream) const
     {
+        const auto timet = std::chrono::system_clock::to_time_t(record.time);
+        struct tm localt = {};
+        internal::localtime_s(&localt, &timet);
+        char datetime_buf[20];
+        const char* datetime_fmt = options_.at(clog::formatoption::datetime_year) ? "%Y-%m-%d %H:%M:%S" : "%m-%d %H:%M:%S";
+        std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
+        stream << "[" << datetime_buf;
+        if (options_.at(clog::formatoption::datetime_microsecond)) {
+            const auto usec = std::chrono::duration_cast<std::chrono::microseconds>(record.time.time_since_epoch()).count() % 1000000;
+            stream << "." << std::setw(6) << std::setfill('0') << usec << "] ";
+        } else {
+            const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time.time_since_epoch()).count() % 1000;
+            stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
+        }
     }
 
-    void datetime(std::ostream& stream) const
+    void severity(const clog::record& record, std::ostream& stream) const
     {
-        if (formatoptions_.at(clog::formatoption::datetime)) {
-            const auto timet = std::chrono::system_clock::to_time_t(record_.time);
-            struct tm localt = {};
-            internal::localtime_s(&localt, &timet);
-            char datetime_buf[20];
-            const char* datetime_fmt = formatoptions_.at(clog::formatoption::datetime_year) ? "%Y-%m-%d %H:%M:%S" : "%m-%d %H:%M:%S";
-            std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
-            stream << "[" << datetime_buf;
-            if (formatoptions_.at(clog::formatoption::datetime_microsecond)) {
-                const auto usec = std::chrono::duration_cast<std::chrono::microseconds>(record_.time.time_since_epoch()).count() % 1000000;
-                stream << "." << std::setw(6) << std::setfill('0') << usec << "] ";
+        stream << "[" << severity_to_str(record.severity) << "] ";
+    }
+
+    void threadid(const clog::record& record, std::ostream& stream) const
+    {
+        stream << "[" << record.threadid << "] ";
+    }
+
+    void file(const clog::record& record, std::ostream& stream) const
+    {
+        if (!clog::internal::is_empty(record.file)) {
+            if (options_.at(clog::formatoption::line)) {
+                stream << "[" << record.file << "@" << record.line << "] ";
             } else {
-                const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record_.time.time_since_epoch()).count() % 1000;
-                stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
+                stream << "[" << record.file << "] ";
             }
         }
     }
 
-    void severity(std::ostream& stream) const
+    void func(const clog::record& record, std::ostream& stream) const
     {
-        if (formatoptions_.at(clog::formatoption::severity)) {
-            stream << "[" << severity_to_str(record_.severity) << "] ";
-        }
-    }
-
-    void threadid(std::ostream& stream) const
-    {
-        if (formatoptions_.at(clog::formatoption::threadid)) {
-            stream << "[" << record_.threadid << "] ";
-        }
-    }
-
-    void file(std::ostream& stream) const
-    {
-        if (formatoptions_.at(clog::formatoption::file) && !clog::internal::is_empty(record_.file)) {
-            if (formatoptions_.at(clog::formatoption::line)) {
-                stream << "[" << record_.file << "@" << record_.line << "] ";
+        if (!clog::internal::is_empty(record.func)) {
+            if (options_.at(clog::formatoption::line)) {
+                stream << "[" << record.func << "@" << record.line << "] ";
             } else {
-                stream << "[" << record_.file << "] ";
+                stream << "[" << record.func << "] ";
             }
         }
     }
 
-    void func(std::ostream& stream) const
+    void tagname(const clog::record& record, std::ostream& stream) const
     {
-        if (formatoptions_.at(clog::formatoption::func) && !clog::internal::is_empty(record_.func)) {
-            if (formatoptions_.at(clog::formatoption::line)) {
-                stream << "[" << record_.func << "@" << record_.line << "] ";
-            } else {
-                stream << "[" << record_.func << "] ";
-            }
-        }
-    }
-
-    void tagname(std::ostream& stream) const
-    {
-        if (formatoptions_.at(clog::formatoption::tagname) && !clog::internal::is_empty(record_.tagname)) {
-            stream << "[" << record_.tagname << "] ";
+        if (!clog::internal::is_empty(record.tagname)) {
+            stream << "[" << record.tagname << "] ";
         }
     }
 
@@ -450,7 +466,7 @@ public:
     void operator+=(const clog::record& record)
     {
         std::ostringstream os;
-        clog::formatter::format(record, formatoptions_, os);
+        formatter_.format(record, os);
         for (auto& handler : handlers_) {
             handler.output(record, os.str().c_str());
         }
@@ -482,9 +498,9 @@ public:
         return *this;
     }
 
-    logger& set_formatoption(clog::formatoption option, bool enable)
+    logger& set_formatter(const clog::formatter& formatter)
     {
-        formatoptions_[option] = enable;
+        formatter_ = formatter;
         return *this;
     }
 
@@ -529,22 +545,13 @@ private:
         const functype_record_str output_func_record_str_;
     };
 
+private:
     std::string tagname_;
+    clog::formatter formatter_;
     bool enable_logging_ = true;
     clog::severity min_severity_ = clog::severity::debug;
     clog::severity max_severity_ = clog::severity::none;
     std::vector<handler> handlers_;
-    clog::internal::formatoption_map formatoptions_ = {
-        { clog::formatoption::datetime, true },
-        { clog::formatoption::datetime_year, true },
-        { clog::formatoption::datetime_microsecond, false },
-        { clog::formatoption::severity, true },
-        { clog::formatoption::threadid, true },
-        { clog::formatoption::file, false },
-        { clog::formatoption::func, true },
-        { clog::formatoption::line, true },
-        { clog::formatoption::tagname, true }
-    };
 
     template <typename First, typename... Args>
     void set_handler_internal(First&& first, Args&&... args)
