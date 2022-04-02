@@ -18,33 +18,34 @@
 // basic macro
 //
 
-#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, CLOG_DEFAULT_INSTANCE_NAME)
-#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, CLOG_DEFAULT_INSTANCE_NAME)
-#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, CLOG_DEFAULT_INSTANCE_NAME)
-#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, CLOG_DEFAULT_INSTANCE_NAME)
-#define CLOG       CLOG_OUTPUT(clog::severity::always, CLOG_DEFAULT_INSTANCE_NAME)
+#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, CLOG_DEFAULT_name)
+#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, CLOG_DEFAULT_name)
+#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, CLOG_DEFAULT_name)
+#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, CLOG_DEFAULT_name)
+#define CLOG       CLOG_OUTPUT(clog::severity::none, CLOG_DEFAULT_name)
 
-#define CLOG_DEBUG_IF(condition) CLOG_OUTPUT_IF(clog::severity::debug, CLOG_DEFAULT_INSTANCE_NAME, condition)
-#define CLOG_INFO_IF(condition)  CLOG_OUTPUT_IF(clog::severity::info, CLOG_DEFAULT_INSTANCE_NAME, condition)
-#define CLOG_WARN_IF(condition)  CLOG_OUTPUT_IF(clog::severity::warn, CLOG_DEFAULT_INSTANCE_NAME, condition)
-#define CLOG_ERROR_IF(condition) CLOG_OUTPUT_IF(clog::severity::error, CLOG_DEFAULT_INSTANCE_NAME, condition)
-#define CLOG_IF(condition)       CLOG_OUTPUT_IF(clog::severity::always, CLOG_DEFAULT_INSTANCE_NAME, condition)
+#define CLOG_DEBUG_IF(condition) CLOG_OUTPUT_IF(clog::severity::debug, CLOG_DEFAULT_name, condition)
+#define CLOG_INFO_IF(condition)  CLOG_OUTPUT_IF(clog::severity::info, CLOG_DEFAULT_name, condition)
+#define CLOG_WARN_IF(condition)  CLOG_OUTPUT_IF(clog::severity::warn, CLOG_DEFAULT_name, condition)
+#define CLOG_ERROR_IF(condition) CLOG_OUTPUT_IF(clog::severity::error, CLOG_DEFAULT_name, condition)
+#define CLOG_IF(condition)       CLOG_OUTPUT_IF(clog::severity::none, CLOG_DEFAULT_name, condition)
 
-#define CLOG_DEBUG_(name) CLOG_OUTPUT(clog::severity::debug, name)
-#define CLOG_INFO_(name)  CLOG_OUTPUT(clog::severity::info, name)
-#define CLOG_WARN_(name)  CLOG_OUTPUT(clog::severity::warn, name)
-#define CLOG_ERROR_(name) CLOG_OUTPUT(clog::severity::error, name)
-#define CLOG_(name)       CLOG_OUTPUT(clog::severity::always, name)
+#define CLOG_DEBUG_(tagname) CLOG_OUTPUT(clog::severity::debug, tagname)
+#define CLOG_INFO_(tagname)  CLOG_OUTPUT(clog::severity::info, tagname)
+#define CLOG_WARN_(tagname)  CLOG_OUTPUT(clog::severity::warn, tagname)
+#define CLOG_ERROR_(tagname) CLOG_OUTPUT(clog::severity::error, tagname)
+#define CLOG_(tagname)       CLOG_OUTPUT(clog::severity::none, tagname)
 
-#define CLOG_DEBUG_IF_(name, condition) CLOG_OUTPUT_IF(clog::severity::debug, name, condition)
-#define CLOG_INFO_IF_(name, condition)  CLOG_OUTPUT_IF(clog::severity::info, name, condition)
-#define CLOG_WARN_IF_(name, condition)  CLOG_OUTPUT_IF(clog::severity::warn, name, condition)
-#define CLOG_ERROR_IF_(name, condition) CLOG_OUTPUT_IF(clog::severity::error, name, condition)
-#define CLOG_IF_(name, condition)       CLOG_OUTPUT_IF(clog::severity::always, name, condition)
+#define CLOG_DEBUG_IF_(tagname, condition) CLOG_OUTPUT_IF(clog::severity::debug, tagname, condition)
+#define CLOG_INFO_IF_(tagname, condition)  CLOG_OUTPUT_IF(clog::severity::info, tagname, condition)
+#define CLOG_WARN_IF_(tagname, condition)  CLOG_OUTPUT_IF(clog::severity::warn, tagname, condition)
+#define CLOG_ERROR_IF_(tagname, condition) CLOG_OUTPUT_IF(clog::severity::error, tagname, condition)
+#define CLOG_IF_(tagname, condition)       CLOG_OUTPUT_IF(clog::severity::none, tagname, condition)
 
 #define CLOG_VARS(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
 
-#define CLOG_GET(name) clog::logger_holder<CLOG_HASH(name)>::get()
+#define CLOG_GET(tagname)  clog::logger<CLOG_HASH(tagname)>::get(tagname)
+#define CLOG_GET_DEFAULT() clog::logger<CLOG_HASH("")>::get("")
 
 #ifdef _MSC_VER
 #define CLOG_FUNC() __FUNCTION__
@@ -61,41 +62,58 @@
 //
 
 // #define CLOG_DISABLE_LOGGING
-// #define CLOG_DISABLE_SEVERITY clog::severity::debug
-// #define CLOG_DISABLE_INSTANCE_NAMES { "name-pattern" }
+// #define CLOG_DISABLE_SEVERITY_DEBUG
+// #define CLOG_DISABLE_SEVERITY_INFO
+// #define CLOG_DISABLE_SEVERITY_WARNING
+// #define CLOG_DISABLE_SEVERITY_ERROR
 
-#if !defined(CLOG_DEFAULT_INSTANCE_NAME)
-#define CLOG_DEFAULT_INSTANCE_NAME ""
-#endif
-
-#if !defined(CLOG_DEFAULT_HANDLER)
-#define CLOG_DEFAULT_HANDLER std::cout
+#if !defined(CLOG_DEFAULT_name)
+#define CLOG_DEFAULT_name ""
 #endif
 
 // internal macro
 
-#define CLOG_OUTPUT_IF(severity, name, condition) \
+// clang-format off
+#define CLOG_OUTPUT(severity, tagname)    \
+    CLOG_SHOULD_OUTPUT(severity, tagname) \
+        CLOG_GET(tagname) += clog::record(severity, tagname, CLOG_FILE(), CLOG_FUNC(), __LINE__)
+
+#define CLOG_OUTPUT_IF(severity, tagname, condition) \
     if (!(condition)) {                           \
     } else                                        \
-        CLOG_OUTPUT(severity, name)
+        CLOG_SHOULD_OUTPUT(severity, tagname)        \
+            CLOG_GET(tagname) += clog::record(severity, tagname, CLOG_FILE(), CLOG_FUNC(), __LINE__)
+
+#if defined(CLOG_DISABLE_LOGGING)
 
 #if defined(_MSC_VER)
-#define CLOG_OUTPUT(severity, name) __pragma(warning(push)) __pragma(warning(disable : 4127)) CLOG_OUTPUT_BODY(severity, name) __pragma(warning(pop))
-#else
-#define CLOG_OUTPUT(severity, name) CLOG_OUTPUT_BODY(severity, name)
-#endif
+#define CLOG_SHOULD_OUTPUT(severity, tagname) \
+    __pragma(warning(push)) \
+    __pragma(warning(disable : 4127)) \
+    if (true) {} else \
+    __pragma(warning(pop))
+#else // _MSC_VAR
+#define CLOG_SHOULD_OUTPUT(severity, tagname) \
+    if (true) {} else
+#endif // _MSC_VAR
 
-#define CLOG_OUTPUT_BODY(severity, name)                                                                                               \
-    if (!clog::internal::should_output(severity) || !clog::internal::should_output(name) || !CLOG_GET(name).should_output(severity)) { \
-    } else                                                                                                                             \
-        CLOG_GET(name)                                                                                                                 \
-            += clog::record(severity, name, CLOG_FILE(), CLOG_FUNC(), __LINE__)
+#else
+
+#define CLOG_SHOULD_OUTPUT(severity, tagname) \
+    if (!CLOG_GET(tagname).should_output(severity)) {} else
+
+#endif
+// clang-format on
 
 namespace clog {
 
 #if defined(_MSC_VER)
 using LPCSTR = const char*;
-extern "C" void OutputDebugStringA(LPCSTR lpOutputString);
+extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(LPCSTR lpOutputString);
+#endif
+
+#if defined(_WIN32)
+extern "C" __declspec(dllimport) unsigned long __stdcall GetCurrentThreadId();
 #endif
 
 #if defined(__ANDROID__)
@@ -113,33 +131,35 @@ enum severity {
     info,
     warn,
     error,
-    always
+    none
 };
 
-enum class output_option {
-    datetime, // default:true
-    datetime_year, // default:true
-    datetime_microsecond, // default:true
-    severity, // default:true
-    file, // default:true
-    func, // default:true
-    line, // default:true
-    instance_name // default:true
+enum class field {
+    datetime,
+    datetime_year,
+    datetime_microsecond,
+    severity,
+    threadid,
+    file,
+    func,
+    line,
+    tagname
 };
 
 namespace internal {
-    struct output_option_array {
-        bool operator[](clog::output_option index) const { return array[static_cast<int>(index)]; }
-        bool& operator[](clog::output_option index) { return array[static_cast<int>(index)]; }
-        std::array<bool, 8> array = {
+    struct field_array {
+        bool operator[](clog::field index) const { return array[static_cast<int>(index)]; }
+        bool& operator[](clog::field index) { return array[static_cast<int>(index)]; }
+        std::array<bool, 9> array = {
             true, // datetime
             true, // datetime_year
             false, // datetime_microsecond
             true, // severity
+            true, // threadid
             true, // file
             true, // func
             true, // line
-            true, // instance_name
+            true, // tagname
         };
     };
 }
@@ -312,7 +332,9 @@ namespace internal {
     inline std::string args_to_string(const char* argstr, Args... args)
     {
         std::ostringstream ss;
+#pragma warning(disable : 4127)
         if (0 < sizeof...(args)) {
+#pragma warning(default : 4127)
             ss << "(" << argstr << ") -> (";
             output_args(ss, args...);
             ss << ") ";
@@ -324,39 +346,35 @@ namespace internal {
         return ss.str();
     }
 
-    constexpr bool should_output(clog::severity severity)
-    {
-#if defined(CLOG_DISABLE_LOGGING)
-        return severity != severity; // false
-#elif defined(CLOG_DISABLE_SEVERITY)
-        return CLOG_DISABLE_SEVERITY <= severity;
-#else
-        return severity == severity; // true
-#endif
-    }
-
-    constexpr bool should_output(const char* name)
-    {
-#if defined(CLOG_DISABLE_INSTANCE_NAMES)
-        return match_list_static(name, CLOG_DISABLE_INSTANCE_NAMES, clog::internal::count_of(CLOG_DISABLE_INSTANCE_NAMES));
-#else
-        return name == name; // true
-#endif
-    }
-
     constexpr bool is_empty(const char* s)
     {
         return s == nullptr || *s == '\0';
     }
+
+    inline uint64_t get_tid()
+    {
+#if defined(_WIN32)
+        return static_cast<uint64_t>(GetCurrentThreadId());
+#elif defined(__linux__)
+        return static_cast<uint64_t>(::syscall(__NR_gettid));
+#elif defined(__APPLE__)
+        uint64_t threadid;
+        pthread_threadid_np(NULL, &threadid);
+        return threadid;
+#else
+        return 0;
+#endif
+    }
 } // namespace internal
 
 struct record {
-    record(clog::severity severity_, const char* instance_name_, const char* file_, const char* func_, size_t line_)
+    record(clog::severity severity_, const char* tagname_, const char* file_, const char* func_, size_t line_)
         : severity(severity_)
-        , instance_name(instance_name_)
+        , tagname(tagname_)
         , file(file_)
         , func(func_)
         , line(line_)
+        , threadid(clog::internal::get_tid())
         , time(std::chrono::system_clock::now())
     {
     }
@@ -383,47 +401,51 @@ struct record {
     }
 
     const clog::severity severity;
-    const char* instance_name;
+    const char* tagname;
     const char* file;
     const char* func;
     const size_t line;
+    const uint64_t threadid;
     const std::chrono::system_clock::time_point time;
     std::ostringstream ss;
 };
 
 struct formatter {
-    static void format(const clog::record& record, const clog::internal::output_option_array& output_options, std::ostream& stream)
+    static void format(const clog::record& record, const clog::internal::field_array& fields, std::ostream& stream)
     {
-        if (output_options[clog::output_option::datetime]) {
-            datetime(record, output_options, stream);
+        if (fields[clog::field::datetime]) {
+            datetime(record, fields, stream);
         }
-        if (output_options[clog::output_option::severity]) {
-            severity(record, output_options, stream);
+        if (fields[clog::field::severity]) {
+            severity(record, fields, stream);
         }
-        if (output_options[clog::output_option::file]) {
-            file(record, output_options, stream);
+        if (fields[clog::field::threadid]) {
+            threadid(record, fields, stream);
         }
-        if (output_options[clog::output_option::func]) {
-            func(record, output_options, stream);
+        if (fields[clog::field::file]) {
+            file(record, fields, stream);
         }
-        if (output_options[clog::output_option::instance_name]) {
-            instance_name(record, output_options, stream);
+        if (fields[clog::field::func]) {
+            func(record, fields, stream);
+        }
+        if (fields[clog::field::tagname]) {
+            tagname(record, fields, stream);
         }
 
         stream << record.message();
     }
 
-    static void datetime(const clog::record& record, const clog::internal::output_option_array& output_options, std::ostream& stream)
+    static void datetime(const clog::record& record, const clog::internal::field_array& fields, std::ostream& stream)
     {
         // datetime
         const auto timet = std::chrono::system_clock::to_time_t(record.time);
         struct tm localt = {};
         internal::localtime_s(&localt, &timet);
         char datetime_buf[20];
-        const char* datetime_fmt = output_options[clog::output_option::datetime_year] ? "%Y-%m-%d %H:%M:%S" : "%m-%d %H:%M:%S";
+        const char* datetime_fmt = fields[clog::field::datetime_year] ? "%Y-%m-%d %H:%M:%S" : "%m-%d %H:%M:%S";
         std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
         stream << "[" << datetime_buf;
-        if (output_options[clog::output_option::datetime_microsecond]) {
+        if (fields[clog::field::datetime_microsecond]) {
             const auto usec = std::chrono::duration_cast<std::chrono::microseconds>(record.time.time_since_epoch()).count() % 1000000;
             stream << "." << std::setw(6) << std::setfill('0') << usec << "] ";
         } else {
@@ -432,16 +454,22 @@ struct formatter {
         }
     }
 
-    static void severity(const clog::record& record, const clog::internal::output_option_array& output_options, std::ostream& stream)
+    static void severity(const clog::record& record, const clog::internal::field_array& fields, std::ostream& stream)
     {
-        (void)output_options;
+        (void)fields;
         stream << "[" << severity_to_str(record.severity) << "] ";
     }
 
-    static void file(const clog::record& record, const clog::internal::output_option_array& output_options, std::ostream& stream)
+    static void threadid(const clog::record& record, const clog::internal::field_array& fields, std::ostream& stream)
+    {
+        (void)fields;
+        stream << "[" << record.threadid << "] ";
+    }
+
+    static void file(const clog::record& record, const clog::internal::field_array& fields, std::ostream& stream)
     {
         if (!clog::internal::is_empty(record.file)) {
-            if (output_options[clog::output_option::line]) {
+            if (fields[clog::field::line] && !fields[clog::field::func]) {
                 stream << "[" << record.file << "@" << record.line << "] ";
             } else {
                 stream << "[" << record.file << "] ";
@@ -449,11 +477,11 @@ struct formatter {
         }
     }
 
-    static void func(const clog::record& record, const clog::internal::output_option_array& output_options, std::ostream& stream)
+    static void func(const clog::record& record, const clog::internal::field_array& fields, std::ostream& stream)
     {
         // func/line
         if (!clog::internal::is_empty(record.func)) {
-            if (output_options[clog::output_option::line]) {
+            if (fields[clog::field::line]) {
                 stream << "[" << record.func << "@" << record.line << "] ";
             } else {
                 stream << "[" << record.func << "] ";
@@ -461,36 +489,42 @@ struct formatter {
         }
     }
 
-    static void instance_name(const clog::record& record, const clog::internal::output_option_array& output_options, std::ostream& stream)
+    static void tagname(const clog::record& record, const clog::internal::field_array& fields, std::ostream& stream)
     {
-        (void)output_options;
-        if (!clog::internal::is_empty(record.instance_name)) {
-            stream << "[" << record.instance_name << "] ";
+        (void)fields;
+        if (!clog::internal::is_empty(record.tagname)) {
+            stream << "[" << record.tagname << "] ";
         }
     }
 
     static constexpr const char* severity_to_str(clog::severity severity)
     {
-        return (severity == clog::severity::debug) ? "debug" :
-            (severity == clog::severity::info)     ? "info " :
-            (severity == clog::severity::warn)     ? "warn " :
-            (severity == clog::severity::error)    ? "error" :
+        return (severity == clog::severity::debug) ? "DEBUG" :
+            (severity == clog::severity::info)     ? "INFO " :
+            (severity == clog::severity::warn)     ? "WARN " :
+            (severity == clog::severity::error)    ? "ERROR" :
                                                      "-----";
     }
 };
 
+template <uint32_t InstanceId>
 struct logger {
-    logger()
+    logger(const char* tagname)
+        : tagname_(tagname)
     {
-#if defined(CLOG_DEFAULT_HANDLER)
-        set_handler(CLOG_DEFAULT_HANDLER);
-#endif
+        set_handler(std::cout);
+    }
+
+    static logger<InstanceId>& get(const char* tagname)
+    {
+        static logger<InstanceId> instance(tagname);
+        return instance;
     }
 
     void operator+=(const clog::record& record)
     {
         std::ostringstream os;
-        clog::formatter::format(record, output_options, os);
+        clog::formatter::format(record, fields, os);
         for (auto& handler : handlers) {
             handler.output(record, os.str().c_str());
         }
@@ -501,7 +535,7 @@ struct logger {
         return enable_logging && (min_severity <= severity);
     }
 
-    logger& set_severity(bool enable)
+    logger& set_enable(bool enable)
     {
         enable_logging = enable;
         return *this;
@@ -536,9 +570,9 @@ struct logger {
 
     void set_handler_internal() { }
 
-    logger& set_output_option(clog::output_option option, bool enable)
+    logger& set_field(clog::field option, bool enable)
     {
-        output_options[option] = enable;
+        fields[option] = enable;
         return *this;
     }
 
@@ -580,10 +614,11 @@ struct logger {
         const functype_record_str output_func_record_str;
     };
 
+    std::string tagname_;
     bool enable_logging = true;
     clog::severity min_severity = clog::severity::debug;
     std::vector<handler> handlers;
-    clog::internal::output_option_array output_options;
+    clog::internal::field_array fields;
 };
 
 namespace handler {
@@ -591,6 +626,7 @@ namespace handler {
     {
 #if defined(_MSC_VER)
         OutputDebugStringA(str);
+        OutputDebugStringA("\n");
 #else
         (void)str;
 #endif
@@ -604,7 +640,7 @@ namespace handler {
             (record.severity == clog::severity::warn)                                   ? ANDROID_LOG_WARN :
             (record.severity == clog::severity::error)                                  ? ANDROID_LOG_ERROR :
                                                                                           ANDROID_LOG_FATAL;
-        const char* tag = (record.instance_name != nullptr) ? record.instance_name : "";
+        const char* tag = (record.tagname != nullptr) ? record.tagname : "";
         std::ostringstream ss;
 #if !defined(CLOG_OPTION_DISABLE_OUTPUT_FILE)
         clog::formatter::file(record, ss);
@@ -634,20 +670,5 @@ namespace handler {
 #endif
     }
 } // namespace handler
-
-template <uint32_t LoggerId>
-class logger_holder {
-public:
-    static clog::logger& get()
-    {
-        static logger_holder<LoggerId> logger_holder;
-        return logger_holder.logger_;
-    }
-
-private:
-    clog::logger logger_;
-
-    logger_holder() { }
-};
 
 } // namespace clog

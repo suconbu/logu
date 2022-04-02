@@ -1,6 +1,7 @@
 ﻿#include "clog/clog.hpp"
 
 #include <string>
+#include <thread>
 
 namespace example {
 void severities_example();
@@ -27,6 +28,9 @@ int main()
     example::fileoutput_example();
     example::outputhandler_example();
     example::instance_example();
+    std::thread::thread([]() { example::instance_example(); }).join();
+
+    CLOG << clog::valueset(1, 3.141592653589793, 'c', "string");
 
     return 0;
 }
