@@ -401,7 +401,7 @@ private:
     void file(std::ostream& stream) const
     {
         if (formatoptions_.at(clog::formatoption::file) && !clog::internal::is_empty(record_.file)) {
-            if (formatoptions_.at(clog::formatoption::line) && !formatoptions_.at(clog::formatoption::func)) {
+            if (formatoptions_.at(clog::formatoption::line)) {
                 stream << "[" << record_.file << "@" << record_.line << "] ";
             } else {
                 stream << "[" << record_.file << "] ";
@@ -444,6 +444,7 @@ public:
     {
         set_handler(std::cout);
     }
+
     logger() = delete;
 
     void operator+=(const clog::record& record)
@@ -457,7 +458,7 @@ public:
 
     bool should_output(clog::severity severity) const
     {
-        return enable_logging_ && (min_severity_ <= severity);
+        return enable_logging_ && (min_severity_ <= severity) && (severity <= max_severity_);
     }
 
     logger& set_enable(bool enable)
@@ -466,9 +467,10 @@ public:
         return *this;
     }
 
-    logger& set_min_severity(clog::severity severity)
+    logger& set_severity(clog::severity min_severity, clog::severity max_severity = clog::severity::none)
     {
-        min_severity_ = severity;
+        min_severity_ = min_severity;
+        max_severity_ = max_severity;
         return *this;
     }
 
@@ -530,6 +532,7 @@ private:
     std::string tagname_;
     bool enable_logging_ = true;
     clog::severity min_severity_ = clog::severity::debug;
+    clog::severity max_severity_ = clog::severity::none;
     std::vector<handler> handlers_;
     clog::internal::formatoption_map formatoptions_ = {
         { clog::formatoption::datetime, true },
@@ -537,7 +540,7 @@ private:
         { clog::formatoption::datetime_microsecond, false },
         { clog::formatoption::severity, true },
         { clog::formatoption::threadid, true },
-        { clog::formatoption::file, true },
+        { clog::formatoption::file, false },
         { clog::formatoption::func, true },
         { clog::formatoption::line, true },
         { clog::formatoption::tagname, true }
@@ -598,14 +601,14 @@ namespace handler {
             (record.severity == clog::severity::warn)                                   ? ANDROID_LOG_WARN :
             (record.severity == clog::severity::error)                                  ? ANDROID_LOG_ERROR :
                                                                                           ANDROID_LOG_FATAL;
-        const char* tag = (record.tagname != nullptr) ? record.tagname : "";
+        const char* tag = clog::internal::is_empty((record.tagname) ? "(default)" : record.tagname;
         std::ostringstream ss;
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FILE)
-        clog::formatter::file(record, ss);
-#endif
-#if !defined(CLOG_OPTION_DISABLE_OUTPUT_FUNC)
-        clog::formatter::func(record, ss);
-#endif
+        if (!clog::internal::is_empty(record.file)) {
+            ss << "[" << record.file << "] ";
+        }
+        if (!clog::internal::is_empty(record.func)) {
+            ss << "[" << record.func << "@" << record.line << "] ";
+        }
         ss << record.message();
         __android_log_print(priority, tag, "%s", ss.str().c_str());
 #else
