@@ -30,8 +30,6 @@ int main()
     example::instance_example();
     std::thread::thread([]() { example::instance_example(); }).join();
 
-    CLOG << clog::valueset(1, 3.141592653589793, 'c', "string");
-
     return 0;
 }
 
@@ -95,7 +93,7 @@ void argument_example()
     const char* cc = "const char*";
     std::string ss = "std::string";
     void* ptr = nullptr;
-    CLOG << CLOG_VARS(n, u, f, cc, ss, "literal", ptr);
+    CLOG << CLOG_VARSTR(n, u, f, cc, ss, "literal", ptr);
 }
 
 } // namespace example
