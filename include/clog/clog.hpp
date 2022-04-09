@@ -32,8 +32,9 @@
 #define CLOG_(tagname)       CLOG_OUTPUT(clog::severity::none, tagname)
 
 // Get logger instance
-#define CLOG_GET(tagname)  clog::internal::static_logger_holder<CLOG_HASH(tagname)>::get(tagname)
-#define CLOG_GET_DEFAULT() CLOG_GET(CLOG_DEFAULT_TAGNAME)
+#define CLOG_GET(tagname)        clog::internal::logger_holder::get(tagname)
+#define CLOG_GET_STATIC(tagname) clog::internal::static_logger_holder<CLOG_HASH(tagname)>::get(tagname)
+#define CLOG_GET_DEFAULT()       CLOG_GET_STATIC(CLOG_DEFAULT_TAGNAME)
 
 // Get function name (e.g. "void myclass::myfunc()")
 #ifdef _MSC_VER
@@ -61,7 +62,7 @@
 
 #define CLOG_OUTPUT(severity, tagname)    \
     CLOG_SHOULD_OUTPUT(severity, tagname) \
-        CLOG_GET(tagname) += clog::record(severity, tagname, CLOG_FILE(), CLOG_FUNC(), __LINE__)
+        CLOG_GET_STATIC(tagname) += clog::record(severity, tagname, CLOG_FILE(), CLOG_FUNC(), __LINE__)
 
 #if defined(CLOG_DISABLE_LOGGING)
 
@@ -79,7 +80,7 @@
 #else // CLOG_DISABLE_LOGGING
 
 #define CLOG_SHOULD_OUTPUT(severity, tagname)         \
-    if (!CLOG_GET(tagname).should_output(severity)) { } else
+    if (!CLOG_GET_STATIC(tagname).should_output(severity)) { } else
 
 #endif // CLOG_DISABLE_LOGGING
 
@@ -603,22 +604,51 @@ private:
 };
 
 namespace internal {
+    class logger_holder : clog::internal::noncopyable {
+    public:
+        static clog::logger& get(const char* tagname, bool with_lock = true)
+        {
+            static logger_holder instance;
+            return with_lock ? instance.find_with_lock(tagname) : instance.find(tagname);
+        }
+
+    private:
+        std::unordered_map<std::string, std::unique_ptr<clog::logger>> instances_;
+        std::mutex mtx_;
+
+        clog::logger& find_with_lock(const char* tagname)
+        {
+            std::lock_guard<std::mutex> lock(mtx_);
+            return find(tagname);
+        }
+
+        clog::logger& find(const char* tagname)
+        {
+            auto itr = instances_.find(tagname);
+            if (itr != instances_.end()) {
+                return *itr->second;
+            } else {
+                return *(instances_[tagname] = std::unique_ptr<clog::logger>(new clog::logger(tagname)));
+            }
+        }
+    };
+
     template <uint32_t InstanceId>
     class static_logger_holder : clog::internal::noncopyable {
     public:
         static clog::logger& get(const char* tagname)
         {
-            static static_logger_holder<InstanceId> instance(tagname);
+            static static_logger_holder<InstanceId> instance(logger_holder::get(tagname, false));
             return (instance.logger_.tagname() == tagname) ? instance.logger_ : instance.find(tagname);
         }
 
     private:
-        clog::logger logger_;
+        clog::logger& logger_;
         std::unique_ptr<static_logger_holder<InstanceId>> next_;
         std::mutex mtx_;
 
-        static_logger_holder(const char* tagname)
-            : logger_(tagname)
+        static_logger_holder(clog::logger& logger)
+            : logger_(logger)
         {
         }
 
@@ -635,7 +665,8 @@ namespace internal {
                 }
             }
             if (!found) {
-                ptr->next_ = std::unique_ptr<static_logger_holder<InstanceId>>(new static_logger_holder<InstanceId>(tagname));
+                ptr->next_ = std::unique_ptr<static_logger_holder<InstanceId>>(
+                    new static_logger_holder<InstanceId>(logger_holder::get(tagname, false)));
                 ptr = ptr->next_.get();
             }
             return ptr->logger_;

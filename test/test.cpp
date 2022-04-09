@@ -372,3 +372,20 @@ TEST_F(ClogTest, CustomFormatter)
     std::string str = testing::internal::GetCapturedStdout();
     EXPECT_EQ("testtest\n", str);
 }
+
+TEST_F(ClogTest, GetInstance)
+{
+    std::string str;
+    std::string name = "GetInstance";
+    CLOG_GET(name.c_str()).set_severity(clog::severity::warn);
+
+    testing::internal::CaptureStdout();
+    CLOG_INFO_("GetInstance") << "test";
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_EQ(0, str.length());
+
+    testing::internal::CaptureStdout();
+    CLOG_WARN_("GetInstance") << "test";
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_NE(0, str.length());
+}
