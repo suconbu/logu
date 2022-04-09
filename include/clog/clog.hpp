@@ -12,6 +12,7 @@
 #include <iomanip>
 #include <iostream>
 #include <memory>
+#include <mutex>
 #include <sstream>
 #include <unordered_map>
 #include <vector>
@@ -31,7 +32,7 @@
 #define CLOG_(tagname)       CLOG_OUTPUT(clog::severity::none, tagname)
 
 // Get logger instance
-#define CLOG_GET(tagname)  clog::internal::logger_holder<CLOG_HASH(tagname)>::get(tagname)
+#define CLOG_GET(tagname)  clog::internal::static_logger_holder<CLOG_HASH(tagname)>::get(tagname)
 #define CLOG_GET_DEFAULT() CLOG_GET(CLOG_DEFAULT_TAGNAME)
 
 // Get function name (e.g. "void myclass::myfunc()")
@@ -478,6 +479,7 @@ public:
 
     void operator+=(const clog::record& record)
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         if (formatter_) {
             const auto str = formatter_->format(record);
             for (auto& h : handlers_) {
@@ -493,6 +495,7 @@ public:
 
     void copy_from(const clog::logger& rhs)
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         handlers_ = rhs.handlers_;
         formatter_ = rhs.formatter_;
         min_severity_ = rhs.min_severity_;
@@ -503,6 +506,7 @@ public:
     template <typename... Args>
     logger& set_handler(Args&&... args)
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         handlers_.clear();
         set_handler_internal(std::forward<Args>(args)...);
         return *this;
@@ -511,12 +515,14 @@ public:
     template <typename FormatterType>
     logger& set_formatter(const FormatterType& formatter)
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         formatter_ = std::unique_ptr<clog::formatter_base>(new FormatterType(formatter));
         return *this;
     }
 
     logger& set_severity(clog::severity min_severity, clog::severity max_severity = clog::severity::none)
     {
+        std::lock_guard<std::mutex> lock(mtx_);
         min_severity_ = min_severity;
         max_severity_ = max_severity;
         return *this;
@@ -578,6 +584,7 @@ private:
     clog::severity min_severity_ = clog::severity::debug;
     clog::severity max_severity_ = clog::severity::none;
     bool enable_logging_ = true;
+    std::mutex mtx_;
 
     template <typename First, typename... Args>
     void set_handler_internal(First&& first, Args&&... args)
@@ -597,26 +604,28 @@ private:
 
 namespace internal {
     template <uint32_t InstanceId>
-    class logger_holder : clog::internal::noncopyable {
+    class static_logger_holder : clog::internal::noncopyable {
     public:
-        logger_holder(const char* tagname)
-            : logger_(tagname)
-        {
-        }
-
         static clog::logger& get(const char* tagname)
         {
-            static logger_holder<InstanceId> instance(tagname);
+            static static_logger_holder<InstanceId> instance(tagname);
             return (instance.logger_.tagname() == tagname) ? instance.logger_ : instance.find(tagname);
         }
 
     private:
         clog::logger logger_;
-        std::unique_ptr<logger_holder<InstanceId>> next_;
+        std::unique_ptr<static_logger_holder<InstanceId>> next_;
+        std::mutex mtx_;
+
+        static_logger_holder(const char* tagname)
+            : logger_(tagname)
+        {
+        }
 
         clog::logger& find(const char* tagname)
         {
-            logger_holder<InstanceId>* ptr = this;
+            std::lock_guard<std::mutex> lock(mtx_);
+            static_logger_holder<InstanceId>* ptr = this;
             bool found = false;
             while (ptr->next_) {
                 ptr = ptr->next_.get();
@@ -626,7 +635,7 @@ namespace internal {
                 }
             }
             if (!found) {
-                ptr->next_ = std::unique_ptr<logger_holder<InstanceId>>(new logger_holder<InstanceId>(tagname));
+                ptr->next_ = std::unique_ptr<static_logger_holder<InstanceId>>(new static_logger_holder<InstanceId>(tagname));
                 ptr = ptr->next_.get();
             }
             return ptr->logger_;
