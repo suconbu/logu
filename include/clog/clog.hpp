@@ -493,7 +493,6 @@ public:
 
     void copy_from(const clog::logger& rhs)
     {
-        tagname_ = rhs.tagname_;
         handlers_ = rhs.handlers_;
         formatter_ = rhs.formatter_;
         min_severity_ = rhs.min_severity_;
@@ -528,6 +527,8 @@ public:
         enable_logging_ = enable;
         return *this;
     }
+
+    const std::string& tagname() const { return tagname_; }
 
 private:
     class handler {
@@ -598,18 +599,37 @@ namespace internal {
     template <uint32_t InstanceId>
     class logger_holder : clog::internal::noncopyable {
     public:
+        logger_holder(const char* tagname)
+            : logger_(tagname)
+        {
+        }
+
         static clog::logger& get(const char* tagname)
         {
             static logger_holder<InstanceId> instance(tagname);
-            return instance.logger_;
+            return (instance.logger_.tagname() == tagname) ? instance.logger_ : instance.find(tagname);
         }
 
     private:
         clog::logger logger_;
+        std::unique_ptr<logger_holder<InstanceId>> next_;
 
-        logger_holder(const char* tagname)
-            : logger_(tagname)
+        clog::logger& find(const char* tagname)
         {
+            logger_holder<InstanceId>* ptr = this;
+            bool found = false;
+            while (ptr->next_) {
+                ptr = ptr->next_.get();
+                if (ptr->logger_.tagname() == tagname) {
+                    found = true;
+                    break;
+                }
+            }
+            if (!found) {
+                ptr->next_ = std::unique_ptr<logger_holder<InstanceId>>(new logger_holder<InstanceId>(tagname));
+                ptr = ptr->next_.get();
+            }
+            return ptr->logger_;
         }
     };
 } // namespace internal
