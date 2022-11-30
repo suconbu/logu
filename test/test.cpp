@@ -6,7 +6,7 @@
 #include <string>
 #include <vector>
 
-//#define TEST_ENABLE_OUTPUT_TO_STDOUT
+// #define TEST_ENABLE_OUTPUT_TO_STDOUT
 
 class ClogTest : public ::testing::Test {
 protected:
@@ -245,7 +245,7 @@ TEST_F(ClogTest, OutputFormat)
 
 TEST_F(ClogTest, CopyLogger)
 {
-    constexpr auto from = "CopyLoggerFrom";
+    // constexpr auto from = "CopyLoggerFrom";
     constexpr auto to = "CopyLoggerTo";
     std::string str;
 
