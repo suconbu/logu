@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.11)
-project(clog_test)
+project(logu_test)
 
 include(FetchContent)
 FetchContent_Declare(
@@ -15,12 +15,8 @@ endif()
 FetchContent_MakeAvailable(googletest)
 
 add_executable(${PROJECT_NAME} ${PROJECT_SOURCE_DIR}/test.cpp)
-target_include_directories(${PROJECT_NAME} PRIVATE ${CMAKE_SOURCE_DIR}/include)
-if(UNIX)
-    target_link_libraries(${PROJECT_NAME} PRIVATE gtest_main pthread)
-else()
-    target_link_libraries(${PROJECT_NAME} PRIVATE gtest_main)
-endif()
+target_compile_features(${PROJECT_NAME} PRIVATE cxx_std_11)
+target_link_libraries(${PROJECT_NAME} PRIVATE gtest_main)
 
 include(GoogleTest)
 gtest_discover_tests(${PROJECT_NAME})

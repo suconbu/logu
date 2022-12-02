@@ -1,19 +1,19 @@
-# clog
+# logu
 
 The single header logging utility for C++.
 
 Example:
 
 ```cpp
-#include "clog/clog.h"
+#include "logu/logu.h"
 
 int main()
 {
-    CLOG_DEBUG << "debug message";
-    CLOG_INFO << "info message";
-    CLOG_WARN << "warning message";
-    CLOG_ERROR << "error message";
-    CLOG << "message with no severity specified";
+    LOGS_DEBUG << "debug message";
+    LOGS_INFO << "info message";
+    LOGS_WARN << "warning message";
+    LOGS_ERROR << "error message";
+    LOGS << "message with no severity specified";
 
     return 0;
 }
@@ -38,8 +38,8 @@ Please see [example.cpp](/example/example.cpp) for example.
 
 # Setup
 
-1. Place `clog/clog.hpp` in include path of your project.
-2. Add `#include "clog/clog.hpp"` into your source code.
+1. Place `logu/logu.hpp` in include path of your project.
+2. Add `#include "logu/logu.hpp"` into your source code.
 
 # Lisence
 

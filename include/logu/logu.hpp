@@ -17,72 +17,75 @@
 #include <unordered_map>
 #include <vector>
 
+// Options:
+// LOGU_DISABLE_LOGGING - If defined, disable all macros
+
 // Basic logging macros
 
-#define CLOG_DEBUG CLOG_OUTPUT(clog::severity::debug, CLOG_DEFAULT_TAGNAME)
-#define CLOG_INFO  CLOG_OUTPUT(clog::severity::info, CLOG_DEFAULT_TAGNAME)
-#define CLOG_WARN  CLOG_OUTPUT(clog::severity::warn, CLOG_DEFAULT_TAGNAME)
-#define CLOG_ERROR CLOG_OUTPUT(clog::severity::error, CLOG_DEFAULT_TAGNAME)
-#define CLOG       CLOG_OUTPUT(clog::severity::none, CLOG_DEFAULT_TAGNAME)
+#define LOGU_DEBUG LOGU_OUTPUT(logu::severity::debug, LOGU_DEFAULT_TAGNAME)
+#define LOGU_INFO  LOGU_OUTPUT(logu::severity::info, LOGU_DEFAULT_TAGNAME)
+#define LOGU_WARN  LOGU_OUTPUT(logu::severity::warn, LOGU_DEFAULT_TAGNAME)
+#define LOGU_ERROR LOGU_OUTPUT(logu::severity::error, LOGU_DEFAULT_TAGNAME)
+#define LOGU       LOGU_OUTPUT(logu::severity::none, LOGU_DEFAULT_TAGNAME)
 
-#define CLOG_DEBUG_(tagname) CLOG_OUTPUT(clog::severity::debug, tagname)
-#define CLOG_INFO_(tagname)  CLOG_OUTPUT(clog::severity::info, tagname)
-#define CLOG_WARN_(tagname)  CLOG_OUTPUT(clog::severity::warn, tagname)
-#define CLOG_ERROR_(tagname) CLOG_OUTPUT(clog::severity::error, tagname)
-#define CLOG_(tagname)       CLOG_OUTPUT(clog::severity::none, tagname)
+#define LOGU_DEBUG_(tagname) LOGU_OUTPUT(logu::severity::debug, tagname)
+#define LOGU_INFO_(tagname)  LOGU_OUTPUT(logu::severity::info, tagname)
+#define LOGU_WARN_(tagname)  LOGU_OUTPUT(logu::severity::warn, tagname)
+#define LOGU_ERROR_(tagname) LOGU_OUTPUT(logu::severity::error, tagname)
+#define LOGU_(tagname)       LOGU_OUTPUT(logu::severity::none, tagname)
 
 // Get logger instance
-#define CLOG_GET(tagname)        clog::internal::logger_holder::get(tagname)
-#define CLOG_GET_STATIC(tagname) clog::internal::static_logger_holder<CLOG_HASH(tagname)>::get(tagname)
-#define CLOG_GET_DEFAULT()       CLOG_GET_STATIC(CLOG_DEFAULT_TAGNAME)
+#define LOGU_GET(tagname)        logu::internal::logger_holder::get(tagname)
+#define LOGU_GET_STATIC(tagname) logu::internal::static_logger_holder<LOGU_HASH(tagname)>::get(tagname)
+#define LOGU_GET_DEFAULT()       LOGU_GET_STATIC(LOGU_DEFAULT_TAGNAME)
 
 // Get function name (e.g. "void myclass::myfunc()")
 #ifdef _MSC_VER
-#define CLOG_FUNC() __FUNCTION__
+#define LOGU_FUNC() __FUNCTION__
 #else
-#define CLOG_FUNC() __PRETTY_FUNCTION__
+#define LOGU_FUNC() __PRETTY_FUNCTION__
 #endif
 
 // Get filename excluding directory path
-#define CLOG_FILE() clog::internal::basename(__FILE__)
+#define LOGU_FILE() logu::internal::basename(__FILE__)
 
 // Get hash code from string
-#define CLOG_HASH(str) clog::internal::murmur3::murmur3(str, clog::internal::strlen_static(str))
+#define LOGU_HASH(str) logu::internal::murmur3::murmur3(str, logu::internal::strlen_static(str))
 
 // String the given arguments together with their values (e.g. "(n, str) -> (123, hello)")
-#define CLOG_VARSTR(...) clog::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
+#define LOGU_VARSTR(...) logu::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
 
 //
 // Internal macro
 //
 
-#define CLOG_DEFAULT_TAGNAME ""
+#define LOGU_DEFAULT_TAGNAME ""
 
 // clang-format off
 
-#define CLOG_OUTPUT(severity, tagname)    \
-    CLOG_SHOULD_OUTPUT(severity, tagname) \
-        CLOG_GET_STATIC(tagname) += clog::record(severity, tagname, CLOG_FILE(), CLOG_FUNC(), __LINE__)
+#define LOGU_OUTPUT(severity, tagname)    \
+    LOGU_SHOULD_OUTPUT(severity, tagname) \
+        LOGU_GET_STATIC(tagname) += logu::record(severity, tagname, LOGU_FILE(), LOGU_FUNC(), __LINE__)
 
-#if defined(CLOG_DISABLE_LOGGING)
+#if defined(LOGU_DISABLE_LOGGING)
 
 #if defined(_MSC_VER)
-#define CLOG_SHOULD_OUTPUT(severity, tagname) \
+#define LOGU_SHOULD_OUTPUT(severity, tagname) \
     __pragma(warning(push))                   \
     __pragma(warning(disable : 4127))         \
     if (true) { }                             \
     else __pragma(warning(pop))
 #else // _MSC_VAR
-#define CLOG_SHOULD_OUTPUT(severity, tagname) \
+#define LOGU_SHOULD_OUTPUT(severity, tagname) \
     if (true) { } else
 #endif // _MSC_VAR
 
-#else // CLOG_DISABLE_LOGGING
+#else // LOGU_DISABLE_LOGGING
 
-#define CLOG_SHOULD_OUTPUT(severity, tagname)         \
-    if (!CLOG_GET_STATIC(tagname).should_output(severity)) { } else
+#define LOGU_SHOULD_OUTPUT(severity, tagname)         \
+    if (!LOGU_GET_STATIC(tagname).should_output(severity)) { } else
 
-#endif // CLOG_DISABLE_LOGGING
+#endif // LOGU_DISABLE_LOGGING
 
 // clang-format on
 
@@ -91,7 +94,7 @@
 #endif
 
 #if defined(__ANDROID__)
-#if defined(CLOG_ENABLE_PLATFORM_LOGGER_ANDROID)
+#if defined(LOGU_ENABLE_PLATFORM_LOGGER_ANDROID)
 #include <android/log.h>
 #endif
 #endif
@@ -101,12 +104,12 @@
 #if !defined(__BIONIC__)
 #include <sys/syscall.h>
 #endif
-#if defined(CLOG_ENABLE_PLATFORM_LOGGER_LINUX)
+#if defined(LOGU_ENABLE_PLATFORM_LOGGER_LINUX)
 #include <syslog.h>
 #endif
 #endif
 
-namespace clog {
+namespace logu {
 
 enum severity {
     debug,
@@ -276,20 +279,20 @@ namespace internal {
 
 class record {
 public:
-    record(clog::severity severity, const char* tagname, const char* file, const char* func, size_t line)
+    record(logu::severity severity, const char* tagname, const char* file, const char* func, size_t line)
         : severity_(severity)
         , tagname_(tagname)
         , file_(file)
         , func_(func)
         , line_(line)
-        , threadid_(clog::internal::get_threadid())
+        , threadid_(logu::internal::get_threadid())
         , time_(std::chrono::system_clock::now())
     {
     }
 
     record() = delete;
 
-    clog::severity severity() const { return severity_; };
+    logu::severity severity() const { return severity_; };
     const char* tagname() const { return tagname_; };
     const char* file() const { return file_; };
     const char* func() const { return func_; };
@@ -298,14 +301,14 @@ public:
     std::chrono::system_clock::time_point time() const { return time_; };
 
     template <typename Type>
-    clog::record& operator<<(const Type& data)
+    logu::record& operator<<(const Type& data)
     {
-        clog::internal::output_wrapper<Type>::output(ss_, data);
+        logu::internal::output_wrapper<Type>::output(ss_, data);
         return *this;
     }
 
     template <typename... Args>
-    clog::record& format(const char* fmt, Args... args)
+    logu::record& format(const char* fmt, Args... args)
     {
         char buf[1024];
         snprintf(buf, sizeof(buf), fmt, args...);
@@ -319,7 +322,7 @@ public:
     }
 
 private:
-    const clog::severity severity_;
+    const logu::severity severity_;
     const char* const tagname_;
     const char* const file_;
     const char* const func_;
@@ -332,10 +335,10 @@ private:
 class formatter_base {
 public:
     virtual ~formatter_base() = default;
-    virtual std::string format(const clog::record& record) = 0;
+    virtual std::string format(const logu::record& record) = 0;
 };
 
-class formatter : public clog::formatter_base {
+class formatter : public logu::formatter_base {
 public:
     enum class option {
         datetime,
@@ -352,7 +355,7 @@ public:
 public:
     virtual ~formatter() = default;
 
-    std::string format(const clog::record& record)
+    std::string format(const logu::record& record)
     {
         std::ostringstream stream;
         if (options_.at(option::datetime)) {
@@ -383,12 +386,12 @@ public:
         return *this;
     }
 
-    static constexpr const char* severity_to_str(clog::severity severity)
+    static constexpr const char* severity_to_str(logu::severity severity)
     {
-        return (severity == clog::severity::debug) ? "DEBUG" :
-            (severity == clog::severity::info)     ? "INFO " :
-            (severity == clog::severity::warn)     ? "WARN " :
-            (severity == clog::severity::error)    ? "ERROR" :
+        return (severity == logu::severity::debug) ? "DEBUG" :
+            (severity == logu::severity::info)     ? "INFO " :
+            (severity == logu::severity::warn)     ? "WARN " :
+            (severity == logu::severity::error)    ? "ERROR" :
                                                      "-----";
     }
 
@@ -405,7 +408,7 @@ private:
         { option::tagname, true }
     };
 
-    void datetime(const clog::record& record, std::ostream& stream) const
+    void datetime(const logu::record& record, std::ostream& stream) const
     {
         const auto timet = std::chrono::system_clock::to_time_t(record.time());
         struct tm localt = {};
@@ -423,19 +426,19 @@ private:
         }
     }
 
-    void severity(const clog::record& record, std::ostream& stream) const
+    void severity(const logu::record& record, std::ostream& stream) const
     {
         stream << "[" << severity_to_str(record.severity()) << "] ";
     }
 
-    void threadid(const clog::record& record, std::ostream& stream) const
+    void threadid(const logu::record& record, std::ostream& stream) const
     {
         stream << "[" << record.threadid() << "] ";
     }
 
-    void file(const clog::record& record, std::ostream& stream) const
+    void file(const logu::record& record, std::ostream& stream) const
     {
-        if (!clog::internal::is_null_or_empty(record.file())) {
+        if (!logu::internal::is_null_or_empty(record.file())) {
             if (options_.at(option::line)) {
                 stream << "[" << record.file() << "@" << record.line() << "] ";
             } else {
@@ -444,9 +447,9 @@ private:
         }
     }
 
-    void func(const clog::record& record, std::ostream& stream) const
+    void func(const logu::record& record, std::ostream& stream) const
     {
-        if (!clog::internal::is_null_or_empty(record.func())) {
+        if (!logu::internal::is_null_or_empty(record.func())) {
             if (options_.at(option::line)) {
                 stream << "[" << record.func() << "@" << record.line() << "] ";
             } else {
@@ -455,21 +458,21 @@ private:
         }
     }
 
-    void tagname(const clog::record& record, std::ostream& stream) const
+    void tagname(const logu::record& record, std::ostream& stream) const
     {
-        if (!clog::internal::is_null_or_empty(record.tagname())) {
+        if (!logu::internal::is_null_or_empty(record.tagname())) {
             stream << "[" << record.tagname() << "] ";
         }
     }
 };
 
-class logger : clog::internal::noncopyable {
+class logger : logu::internal::noncopyable {
 public:
     logger(const char* tagname)
         : tagname_(tagname)
     {
-#if defined(CLOG_ENABLE_PLATFORM_LOGGER_WINDOWS) || defined(CLOG_ENABLE_PLATFORM_LOGGER_ANDROID) || defined(CLOG_ENABLE_PLATFORM_LOGGER_LINUX)
-        void platform_logger(const clog::record& record, const char* str);
+#if defined(LOGU_ENABLE_PLATFORM_LOGGER_WINDOWS) || defined(LOGU_ENABLE_PLATFORM_LOGGER_ANDROID) || defined(LOGU_ENABLE_PLATFORM_LOGGER_LINUX)
+        void platform_logger(const logu::record& record, const char* str);
         set_handler(std::cout, platform_logger);
 #else
         set_handler(std::cout);
@@ -478,7 +481,7 @@ public:
 
     logger() = delete;
 
-    void operator+=(const clog::record& record)
+    void operator+=(const logu::record& record)
     {
         std::lock_guard<std::mutex> lock(mtx_);
         if (formatter_) {
@@ -489,12 +492,12 @@ public:
         }
     }
 
-    bool should_output(clog::severity severity) const
+    bool should_output(logu::severity severity) const
     {
         return enable_logging_ && (min_severity_ <= severity) && (severity <= max_severity_);
     }
 
-    void copy_from(const clog::logger& rhs)
+    void copy_from(const logu::logger& rhs)
     {
         std::lock_guard<std::mutex> lock(mtx_);
         handlers_ = rhs.handlers_;
@@ -517,11 +520,11 @@ public:
     logger& set_formatter(const FormatterType& formatter)
     {
         std::lock_guard<std::mutex> lock(mtx_);
-        formatter_ = std::unique_ptr<clog::formatter_base>(new FormatterType(formatter));
+        formatter_ = std::unique_ptr<logu::formatter_base>(new FormatterType(formatter));
         return *this;
     }
 
-    logger& set_severity(clog::severity min_severity, clog::severity max_severity = clog::severity::none)
+    logger& set_severity(logu::severity min_severity, logu::severity max_severity = logu::severity::none)
     {
         std::lock_guard<std::mutex> lock(mtx_);
         min_severity_ = min_severity;
@@ -541,8 +544,8 @@ private:
     class handler {
     public:
         using functype_str = std::function<void(const char*)>;
-        using functype_record = std::function<void(const clog::record&)>;
-        using functype_record_str = std::function<void(const clog::record&, const char*)>;
+        using functype_record = std::function<void(const logu::record&)>;
+        using functype_record_str = std::function<void(const logu::record&, const char*)>;
 
         // clang-format off
         handler(functype_str func) : output_func_str_(func) { }
@@ -557,7 +560,7 @@ private:
         {
         }
 
-        void output(const clog::record& record, const char* str)
+        void output(const logu::record& record, const char* str)
         {
             if (output_func_str_ != nullptr) {
                 output_func_str_(str);
@@ -581,9 +584,9 @@ private:
 private:
     std::string tagname_;
     std::vector<handler> handlers_;
-    std::shared_ptr<clog::formatter_base> formatter_ = std::make_shared<clog::formatter>();
-    clog::severity min_severity_ = clog::severity::debug;
-    clog::severity max_severity_ = clog::severity::none;
+    std::shared_ptr<logu::formatter_base> formatter_ = std::make_shared<logu::formatter>();
+    logu::severity min_severity_ = logu::severity::debug;
+    logu::severity max_severity_ = logu::severity::none;
     bool enable_logging_ = true;
     std::mutex mtx_;
 
@@ -604,55 +607,55 @@ private:
 };
 
 namespace internal {
-    class logger_holder : clog::internal::noncopyable {
+    class logger_holder : logu::internal::noncopyable {
     public:
-        static clog::logger& get(const char* tagname, bool with_lock = true)
+        static logu::logger& get(const char* tagname, bool with_lock = true)
         {
             static logger_holder instance;
             return with_lock ? instance.find_with_lock(tagname) : instance.find(tagname);
         }
 
     private:
-        std::unordered_map<std::string, std::unique_ptr<clog::logger>> instances_;
+        std::unordered_map<std::string, std::unique_ptr<logu::logger>> instances_;
         std::mutex mtx_;
 
-        clog::logger& find_with_lock(const char* tagname)
+        logu::logger& find_with_lock(const char* tagname)
         {
             std::lock_guard<std::mutex> lock(mtx_);
             return find(tagname);
         }
 
-        clog::logger& find(const char* tagname)
+        logu::logger& find(const char* tagname)
         {
             auto itr = instances_.find(tagname);
             if (itr != instances_.end()) {
                 return *itr->second;
             } else {
-                return *(instances_[tagname] = std::unique_ptr<clog::logger>(new clog::logger(tagname)));
+                return *(instances_[tagname] = std::unique_ptr<logu::logger>(new logu::logger(tagname)));
             }
         }
     };
 
     template <uint32_t InstanceId>
-    class static_logger_holder : clog::internal::noncopyable {
+    class static_logger_holder : logu::internal::noncopyable {
     public:
-        static clog::logger& get(const char* tagname)
+        static logu::logger& get(const char* tagname)
         {
             static static_logger_holder<InstanceId> instance(logger_holder::get(tagname, false));
             return (instance.logger_.tagname() == tagname) ? instance.logger_ : instance.find(tagname);
         }
 
     private:
-        clog::logger& logger_;
+        logu::logger& logger_;
         std::unique_ptr<static_logger_holder<InstanceId>> next_;
         std::mutex mtx_;
 
-        static_logger_holder(clog::logger& logger)
+        static_logger_holder(logu::logger& logger)
             : logger_(logger)
         {
         }
 
-        clog::logger& find(const char* tagname)
+        logu::logger& find(const char* tagname)
         {
             std::lock_guard<std::mutex> lock(mtx_);
             static_logger_holder<InstanceId>* ptr = this;
@@ -676,12 +679,12 @@ namespace internal {
 
 namespace internal {
 
-#if defined(_MSC_VER) && defined(CLOG_ENABLE_PLATFORM_LOGGER_WINDOWS)
+#if defined(_MSC_VER) && defined(LOGU_ENABLE_PLATFORM_LOGGER_WINDOWS)
     extern "C" __declspec(dllimport) void __stdcall OutputDebugStringA(const char* lpOutputString);
 #endif
     inline void windows_debugger_handler(const char* str)
     {
-#if defined(_MSC_VER) && defined(CLOG_ENABLE_PLATFORM_LOGGER_WINDOWS)
+#if defined(_MSC_VER) && defined(LOGU_ENABLE_PLATFORM_LOGGER_WINDOWS)
         OutputDebugStringA(str);
         OutputDebugStringA("\n");
 #else
@@ -689,17 +692,17 @@ namespace internal {
 #endif
     }
 
-    inline void android_debugger_handler(const clog::record& record)
+    inline void android_debugger_handler(const logu::record& record)
     {
-#if defined(__ANDROID__) && defined(CLOG_ENABLE_PLATFORM_LOGGER_ANDROID)
-        const android_LogPriority priority = (record.severity() == clog::severity::debug) ? ANDROID_LOG_DEBUG :
-            (record.severity() == clog::severity::info)                                   ? ANDROID_LOG_INFO :
-            (record.severity() == clog::severity::warn)                                   ? ANDROID_LOG_WARN :
-            (record.severity() == clog::severity::error)                                  ? ANDROID_LOG_ERROR :
+#if defined(__ANDROID__) && defined(LOGU_ENABLE_PLATFORM_LOGGER_ANDROID)
+        const android_LogPriority priority = (record.severity() == logu::severity::debug) ? ANDROID_LOG_DEBUG :
+            (record.severity() == logu::severity::info)                                   ? ANDROID_LOG_INFO :
+            (record.severity() == logu::severity::warn)                                   ? ANDROID_LOG_WARN :
+            (record.severity() == logu::severity::error)                                  ? ANDROID_LOG_ERROR :
                                                                                             ANDROID_LOG_FATAL;
-        const char* tag = clog::internal::is_null_or_empty(record.tagname()) ? "(default)" : record.tagname();
+        const char* tag = logu::internal::is_null_or_empty(record.tagname()) ? "(default)" : record.tagname();
         std::ostringstream ss;
-        if (!clog::internal::is_null_or_empty(record.func())) {
+        if (!logu::internal::is_null_or_empty(record.func())) {
             ss << "[" << record.func() << "@" << record.line() << "] ";
         }
         ss << record.message();
@@ -709,13 +712,13 @@ namespace internal {
 #endif
     }
 
-    inline void linux_syslog_handler(const clog::record& record, const char* str)
+    inline void linux_syslog_handler(const logu::record& record, const char* str)
     {
-#if defined(__linux__) && defined(CLOG_ENABLE_PLATFORM_LOGGER_LINUX)
-        const int level = (record.severity() == clog::severity::debug) ? LOG_DEBUG :
-            (record.severity() == clog::severity::info)                ? LOG_INFO :
-            (record.severity() == clog::severity::warn)                ? LOG_WARNING :
-            (record.severity() == clog::severity::error)               ? LOG_ERR :
+#if defined(__linux__) && defined(LOGU_ENABLE_PLATFORM_LOGGER_LINUX)
+        const int level = (record.severity() == logu::severity::debug) ? LOG_DEBUG :
+            (record.severity() == logu::severity::info)                ? LOG_INFO :
+            (record.severity() == logu::severity::warn)                ? LOG_WARNING :
+            (record.severity() == logu::severity::error)               ? LOG_ERR :
                                                                          LOG_CRIT;
         syslog(LOG_USER | level, "%s", str);
 #else
@@ -726,19 +729,19 @@ namespace internal {
 
 } // namespace internal
 
-inline void platform_logger(const clog::record& record, const char* str)
+inline void platform_logger(const logu::record& record, const char* str)
 {
     (void)record;
     (void)str;
 #if defined(_MSC_VER)
-    clog::internal::windows_debugger_handler(str);
+    logu::internal::windows_debugger_handler(str);
 #endif
 #if defined(__ANDROID__)
-    clog::internal::android_debugger_handler(record);
+    logu::internal::android_debugger_handler(record);
 #endif
 #if defined(__linux__)
-    clog::internal::linux_syslog_handler(record, str);
+    logu::internal::linux_syslog_handler(record, str);
 #endif
 }
 
-} // namespace clog
+} // namespace logu

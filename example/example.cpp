@@ -1,9 +1,9 @@
-﻿#include "clog/clog.hpp"
+﻿#include "logu/logu.hpp"
 
 #include <string>
 
-class example_formatter : public clog::formatter_base {
-    std::string format(const clog::record& record) override
+class example_formatter : public logu::formatter_base {
+    std::string format(const logu::record& record) override
     {
         return "[example_formatter] " + record.message();
     }
@@ -13,31 +13,31 @@ int main()
 {
     // Basic usage
 
-    CLOG_DEBUG << "debug message";
-    CLOG_INFO << "info message";
-    CLOG_WARN << "warning message";
-    CLOG_ERROR << "error message";
-    CLOG << "message with no severity specified";
+    LOGU_DEBUG << "debug message";
+    LOGU_INFO << "info message";
+    LOGU_WARN << "warning message";
+    LOGU_ERROR << "error message";
+    LOGU << "message with no severity specified";
 
     // Customize default logger
 
-    CLOG_GET_DEFAULT()
-        .set_severity(clog::severity::warn)
-        .set_formatter(clog::formatter()
-            .set_option(clog::formatter::option::datetime_year, false)
-            .set_option(clog::formatter::option::datetime_microsecond, true)
-            .set_option(clog::formatter::option::func, false)
-            .set_option(clog::formatter::option::threadid, false));
+    LOGU_GET_DEFAULT()
+        .set_severity(logu::severity::warn)
+        .set_formatter(logu::formatter()
+            .set_option(logu::formatter::option::datetime_year, false)
+            .set_option(logu::formatter::option::datetime_microsecond, true)
+            .set_option(logu::formatter::option::func, false)
+            .set_option(logu::formatter::option::threadid, false));
 
-    CLOG_DEBUG << "debug message";
-    CLOG_INFO << "info message";
-    CLOG_WARN << "warn message";
-    CLOG_ERROR << "error message";
-    CLOG << "message with no severity specified";
+    LOGU_DEBUG << "debug message";
+    LOGU_INFO << "info message";
+    LOGU_WARN << "warn message";
+    LOGU_ERROR << "error message";
+    LOGU << "message with no severity specified";
 
     // Use named logger
 
-    CLOG_GET("example")
+    LOGU_GET("example")
         .set_handler(std::cout, "example.log")
         .set_formatter(example_formatter());
 
@@ -45,9 +45,9 @@ int main()
     double f = 3.141592653589793;
     const char* str = "hello";
 
-    CLOG_("example").format("n:%d f:%.3f str:%s", n, f, str);
+    LOGU_("example").format("n:%d f:%.3f str:%s", n, f, str);
 
-    CLOG_INFO_("example") << CLOG_VARSTR(n, f, str);
+    LOGU_INFO_("example") << LOGU_VARSTR(n, f, str);
 
     return 0;
 }
