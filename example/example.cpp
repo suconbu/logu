@@ -19,6 +19,20 @@ int main()
     LOGU_ERROR << "error message";
     LOGU << "message with no severity specified";
 
+    // With condition
+
+    LOGU_IF(true) << "conditional message (true)";
+    LOGU_IF(false) << "conditional message (false)";
+    LOGU_IF_("example", true) << "conditional message (true)";
+    LOGU_IF_("example", false) << "conditional message (false)";
+
+    // Print variable
+
+    int n = 1234567890;
+    double f = 3.141592653589793;
+    const char* str = "hello";
+    LOGU_PRINT_INFO(n, f, str);
+
     // Customize default logger
 
     LOGU_GET_DEFAULT()
@@ -41,13 +55,7 @@ int main()
         .set_handler(std::cout, "example.log")
         .set_formatter(example_formatter());
 
-    int n = 1234567890;
-    double f = 3.141592653589793;
-    const char* str = "hello";
-
-    LOGU_("example").format("n:%d f:%.3f str:%s", n, f, str);
-
-    LOGU_INFO_("example") << LOGU_VARSTR(n, f, str);
+    LOGU_("example") << "custom formatted message";
 
     return 0;
 }

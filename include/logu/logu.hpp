@@ -17,8 +17,12 @@
 #include <unordered_map>
 #include <vector>
 
-// Options:
-// LOGU_DISABLE_LOGGING - If defined, disable all macros
+// Option definitions
+
+// LOGU_DISABLE_LOGGING                - Disable all macros
+// LOGU_ENABLE_PLATFORM_LOGGER_ANDROID - Enable output to logcat (Only for Android)
+// LOGU_ENABLE_PLATFORM_LOGGER_LINUX   - Enable output to syslog (Only for Linux)
+// LOGU_ENABLE_PLATFORM_LOGGER_WINDOWS - Enable output to debugger (Only for Windows)
 
 // Basic logging macros
 
@@ -33,6 +37,48 @@
 #define LOGU_WARN_(tagname)  LOGU_OUTPUT(logu::severity::warn, tagname)
 #define LOGU_ERROR_(tagname) LOGU_OUTPUT(logu::severity::error, tagname)
 #define LOGU_(tagname)       LOGU_OUTPUT(logu::severity::none, tagname)
+
+// With condition
+
+#define LOGU_DEBUG_IF(condition) LOGU_OUTPUT_IF(logu::severity::debug, LOGU_DEFAULT_TAGNAME, condition)
+#define LOGU_INFO_IF(condition)  LOGU_OUTPUT_IF(logu::severity::info, LOGU_DEFAULT_TAGNAME, condition)
+#define LOGU_WARN_IF(condition)  LOGU_OUTPUT_IF(logu::severity::warn, LOGU_DEFAULT_TAGNAME, condition)
+#define LOGU_ERROR_IF(condition) LOGU_OUTPUT_IF(logu::severity::error, LOGU_DEFAULT_TAGNAME, condition)
+#define LOGU_IF(condition)       LOGU_OUTPUT_IF(logu::severity::none, LOGU_DEFAULT_TAGNAME, condition)
+
+#define LOGU_DEBUG_IF_(tagname, condition) LOGU_OUTPUT_IF(logu::severity::debug, tagname, condition)
+#define LOGU_INFO_IF_(tagname, condition)  LOGU_OUTPUT_IF(logu::severity::info, tagname, condition)
+#define LOGU_WARN_IF_(tagname, condition)  LOGU_OUTPUT_IF(logu::severity::warn, tagname, condition)
+#define LOGU_ERROR_IF_(tagname, condition) LOGU_OUTPUT_IF(logu::severity::error, tagname, condition)
+#define LOGU_IF_(tagname, condition)       LOGU_OUTPUT_IF(logu::severity::none, tagname, condition)
+
+// Print variable
+
+// clang-format off
+#define LOGU_PRINT_DEBUG(...) do { LOGU_DEBUG << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_INFO(...)  do { LOGU_INFO << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_WARN(...)  do { LOGU_WARN << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_ERROR(...) do { LOGU_ERROR << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT(...)       do { LOGU << LOGU_VARSTR(__VA_ARGS__); } while(false)
+
+#define LOGU_PRINT_DEBUG_(tagname, ...) do { LOGU_DEBUG_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_INFO_(tagname, ...)  do { LOGU_INFO_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_WARN_(tagname, ...)  do { LOGU_WARN_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_ERROR_(tagname, ...) do { LOGU_ERROR_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_(tagname, ...)       do { LOGU_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+
+#define LOGU_PRINT_DEBUG_IF(condition, ...) do { LOGU_DEBUG_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_INFO_IF(condition, ...)  do { LOGU_INFO_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_WARN_IF(condition, ...)  do { LOGU_WARN_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_ERROR_IF(condition, ...) do { LOGU_ERROR_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_IF(condition, ...)       do { LOGU_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+
+#define LOGU_PRINT_DEBUG_IF_(tagname, condition, ...) do { LOGU_DEBUG_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_INFO_IF_(tagname, condition, ...)  do { LOGU_INFO_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_WARN_IF_(tagname, condition, ...)  do { LOGU_WARN_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_ERROR_IF_(tagname, condition, ...) do { LOGU_ERROR_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+#define LOGU_PRINT_IF_(tagname, condition, ...)       do { LOGU_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
+// clang-format on
 
 // Get logger instance
 #define LOGU_GET(tagname)        logu::internal::logger_holder::get(tagname)
@@ -62,6 +108,8 @@
 #define LOGU_DEFAULT_TAGNAME ""
 
 // clang-format off
+
+#define LOGU_OUTPUT_IF(severity, tagname, conditional) if (!(conditional)) {;} else LOGU_OUTPUT(severity, tagname)
 
 #define LOGU_OUTPUT(severity, tagname)    \
     LOGU_SHOULD_OUTPUT(severity, tagname) \
@@ -402,8 +450,8 @@ private:
         { option::datetime_microsecond, false },
         { option::severity, true },
         { option::threadid, true },
-        { option::file, false },
-        { option::func, true },
+        { option::file, true },
+        { option::func, false },
         { option::line, true },
         { option::tagname, true }
     };
@@ -416,33 +464,33 @@ private:
         char datetime_buf[20];
         const char* datetime_fmt = options_.at(option::datetime_year) ? "%Y-%m-%d %H:%M:%S" : "%m-%d %H:%M:%S";
         std::strftime(datetime_buf, sizeof(datetime_buf), datetime_fmt, &localt);
-        stream << "[" << datetime_buf;
+        stream << datetime_buf;
         if (options_.at(option::datetime_microsecond)) {
             const auto usec = std::chrono::duration_cast<std::chrono::microseconds>(record.time().time_since_epoch()).count() % 1000000;
-            stream << "." << std::setw(6) << std::setfill('0') << usec << "] ";
+            stream << "." << std::setw(6) << std::setfill('0') << usec << " | ";
         } else {
             const auto msec = std::chrono::duration_cast<std::chrono::milliseconds>(record.time().time_since_epoch()).count() % 1000;
-            stream << "." << std::setw(3) << std::setfill('0') << msec << "] ";
+            stream << "." << std::setw(3) << std::setfill('0') << msec << " | ";
         }
     }
 
     void severity(const logu::record& record, std::ostream& stream) const
     {
-        stream << "[" << severity_to_str(record.severity()) << "] ";
+        stream << severity_to_str(record.severity()) << " | ";
     }
 
     void threadid(const logu::record& record, std::ostream& stream) const
     {
-        stream << "[" << record.threadid() << "] ";
+        stream << record.threadid() << " | ";
     }
 
     void file(const logu::record& record, std::ostream& stream) const
     {
         if (!logu::internal::is_null_or_empty(record.file())) {
             if (options_.at(option::line)) {
-                stream << "[" << record.file() << "@" << record.line() << "] ";
+                stream << record.file() << "@" << record.line() << " | ";
             } else {
-                stream << "[" << record.file() << "] ";
+                stream << record.file() << " | ";
             }
         }
     }
@@ -451,9 +499,9 @@ private:
     {
         if (!logu::internal::is_null_or_empty(record.func())) {
             if (options_.at(option::line)) {
-                stream << "[" << record.func() << "@" << record.line() << "] ";
+                stream << record.func() << "@" << record.line() << " | ";
             } else {
-                stream << "[" << record.func() << "] ";
+                stream << record.func() << " | ";
             }
         }
     }
