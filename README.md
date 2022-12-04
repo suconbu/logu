@@ -9,11 +9,19 @@ Example:
 
 int main()
 {
-    LOGS_DEBUG << "debug message";
-    LOGS_INFO << "info message";
-    LOGS_WARN << "warning message";
-    LOGS_ERROR << "error message";
-    LOGS << "message with no severity specified";
+    // Stream style
+
+    LOGU_DEBUG << "debug message";
+    LOGU_INFO << "info message";
+    LOGU_WARN << "warning message";
+    LOGU_ERROR << "error message";
+    LOGU << "message with no severity specified";
+
+    // Print variable name and value
+
+    int32_t age = 3;
+    std::string name = "taro";
+    LOGU_PRINT_DEBUG(name, age);
 
     return 0;
 }
@@ -22,11 +30,12 @@ int main()
 Result:
 
 ```
-2022-04-04 00:10:23.000 | DEBUG | 6793 | example.cpp@16 | debug message
-2022-04-04 00:10:23.000 | INFO  | 6793 | example.cpp@17 | info message
-2022-04-04 00:10:23.000 | WARN  | 6793 | example.cpp@18 | warning message
-2022-04-04 00:10:23.000 | ERROR | 6793 | example.cpp@19 | error message
-2022-04-04 00:10:23.000 | ----- | 6793 | example.cpp@20 | message with no severity specified
+2022-04-04 00:10:23.000 | DEBUG | 6793 | example.cpp@7 | debug message
+2022-04-04 00:10:23.000 | INFO  | 6793 | example.cpp@8 | info message
+2022-04-04 00:10:23.000 | WARN  | 6793 | example.cpp@9 | warning message
+2022-04-04 00:10:23.000 | ERROR | 6793 | example.cpp@10 | error message
+2022-04-04 00:10:23.000 | ----- | 6793 | example.cpp@11 | message with no severity specified
+2022-04-04 00:10:23.000 | DEBUG | 6793 | example.cpp@17 | (name, age) -> (taro, 3)
 ```
 
 Log format (default):
