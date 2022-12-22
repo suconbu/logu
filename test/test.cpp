@@ -423,31 +423,31 @@ TEST_F(LoguTest, Var)
     std::string v2 = "abc";
 
     testing::internal::CaptureStdout();
-    LOGU << LOGU_VARSTR(v1, v2);
+    LOGU << LOGU_VARS(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "----- | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_DEBUG << LOGU_VARSTR(v1, v2);
+    LOGU_DEBUG << LOGU_VARS(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "DEBUG | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_INFO << LOGU_VARSTR(v1, v2);
+    LOGU_INFO << LOGU_VARS(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "INFO  | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_WARN << LOGU_VARSTR(v1, v2);
+    LOGU_WARN << LOGU_VARS(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "WARN  | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_ERROR << LOGU_VARSTR(v1, v2);
+    LOGU_ERROR << LOGU_VARS(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "ERROR | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());

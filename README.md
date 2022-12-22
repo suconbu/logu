@@ -21,7 +21,7 @@ int main()
 
     int32_t age = 3;
     std::string name = "taro";
-    LOGU_PRINT_DEBUG(name, age);
+    LOGU_DEBUG << LOGU_VARS(name, age);
 
     return 0;
 }

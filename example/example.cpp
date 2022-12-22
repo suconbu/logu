@@ -31,17 +31,18 @@ int main()
     int n = 1234567890;
     double f = 3.141592653589793;
     const char* str = "hello";
-    LOGU_INFO << LOGU_VARSTR(n, f, str);
+    LOGU_INFO << LOGU_VARS(n, f, str);
 
     // Customize default logger
 
     LOGU_GET_DEFAULT()
         .set_severity(logu::severity::warn)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime_year, false)
-                           .set_option(logu::formatter::option::datetime_microsecond, true)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::threadid, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime_year, false)
+                .set_option(logu::formatter::option::datetime_microsecond, true)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::threadid, false));
 
     LOGU_DEBUG << "debug message";
     LOGU_INFO << "info message";

@@ -71,7 +71,7 @@
 #define LOGU_HASH(str) logu::internal::murmur3::murmur3(str, logu::internal::strlen_static(str))
 
 // String the given arguments together with their values (e.g. "(n, str) -> (123, hello)")
-#define LOGU_VARSTR(...) logu::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
+#define LOGU_VARS(...) logu::internal::args_to_string("" #__VA_ARGS__, ##__VA_ARGS__)
 
 //
 // Internal macro
