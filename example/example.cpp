@@ -35,7 +35,7 @@ int main()
 
     // Customize default logger
 
-    LOGU_GET_DEFAULT()
+    LOGU_DEFAULT_LOGGER()
         .set_severity(logu::severity::warn)
         .set_formatter(
             logu::formatter()
@@ -52,7 +52,7 @@ int main()
 
     // Use named logger
 
-    LOGU_GET("example")
+    LOGU_LOGGER("example")
         .set_handler(std::cout, "example.log")
         .set_formatter(example_formatter());
 

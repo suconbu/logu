@@ -26,36 +26,36 @@
 
 // Basic logging macros
 
-#define LOGU_DEBUG LOGU_OUTPUT(logu::severity::debug, LOGU_DEFAULT_TAGNAME)
-#define LOGU_INFO  LOGU_OUTPUT(logu::severity::info, LOGU_DEFAULT_TAGNAME)
-#define LOGU_WARN  LOGU_OUTPUT(logu::severity::warn, LOGU_DEFAULT_TAGNAME)
-#define LOGU_ERROR LOGU_OUTPUT(logu::severity::error, LOGU_DEFAULT_TAGNAME)
-#define LOGU       LOGU_OUTPUT(logu::severity::none, LOGU_DEFAULT_TAGNAME)
+#define LOGU_DEBUG LOGU_INTERNAL_OUTPUT(logu::severity::debug, "")
+#define LOGU_INFO  LOGU_INTERNAL_OUTPUT(logu::severity::info, "")
+#define LOGU_WARN  LOGU_INTERNAL_OUTPUT(logu::severity::warn, "")
+#define LOGU_ERROR LOGU_INTERNAL_OUTPUT(logu::severity::error, "")
+#define LOGU       LOGU_INTERNAL_OUTPUT(logu::severity::none, "")
 
-#define LOGU_DEBUG_(tagname) LOGU_OUTPUT(logu::severity::debug, tagname)
-#define LOGU_INFO_(tagname)  LOGU_OUTPUT(logu::severity::info, tagname)
-#define LOGU_WARN_(tagname)  LOGU_OUTPUT(logu::severity::warn, tagname)
-#define LOGU_ERROR_(tagname) LOGU_OUTPUT(logu::severity::error, tagname)
-#define LOGU_(tagname)       LOGU_OUTPUT(logu::severity::none, tagname)
+#define LOGU_DEBUG_(tagname) LOGU_INTERNAL_OUTPUT(logu::severity::debug, tagname)
+#define LOGU_INFO_(tagname)  LOGU_INTERNAL_OUTPUT(logu::severity::info, tagname)
+#define LOGU_WARN_(tagname)  LOGU_INTERNAL_OUTPUT(logu::severity::warn, tagname)
+#define LOGU_ERROR_(tagname) LOGU_INTERNAL_OUTPUT(logu::severity::error, tagname)
+#define LOGU_(tagname)       LOGU_INTERNAL_OUTPUT(logu::severity::none, tagname)
 
 // With condition
 
-#define LOGU_DEBUG_IF(condition) LOGU_OUTPUT_IF(logu::severity::debug, LOGU_DEFAULT_TAGNAME, condition)
-#define LOGU_INFO_IF(condition)  LOGU_OUTPUT_IF(logu::severity::info, LOGU_DEFAULT_TAGNAME, condition)
-#define LOGU_WARN_IF(condition)  LOGU_OUTPUT_IF(logu::severity::warn, LOGU_DEFAULT_TAGNAME, condition)
-#define LOGU_ERROR_IF(condition) LOGU_OUTPUT_IF(logu::severity::error, LOGU_DEFAULT_TAGNAME, condition)
-#define LOGU_IF(condition)       LOGU_OUTPUT_IF(logu::severity::none, LOGU_DEFAULT_TAGNAME, condition)
+#define LOGU_DEBUG_IF(condition) LOGU_INTERNAL_OUTPUT_IF(logu::severity::debug, "", condition)
+#define LOGU_INFO_IF(condition)  LOGU_INTERNAL_OUTPUT_IF(logu::severity::info, "", condition)
+#define LOGU_WARN_IF(condition)  LOGU_INTERNAL_OUTPUT_IF(logu::severity::warn, "", condition)
+#define LOGU_ERROR_IF(condition) LOGU_INTERNAL_OUTPUT_IF(logu::severity::error, "", condition)
+#define LOGU_IF(condition)       LOGU_INTERNAL_OUTPUT_IF(logu::severity::none, "", condition)
 
-#define LOGU_DEBUG_IF_(tagname, condition) LOGU_OUTPUT_IF(logu::severity::debug, tagname, condition)
-#define LOGU_INFO_IF_(tagname, condition)  LOGU_OUTPUT_IF(logu::severity::info, tagname, condition)
-#define LOGU_WARN_IF_(tagname, condition)  LOGU_OUTPUT_IF(logu::severity::warn, tagname, condition)
-#define LOGU_ERROR_IF_(tagname, condition) LOGU_OUTPUT_IF(logu::severity::error, tagname, condition)
-#define LOGU_IF_(tagname, condition)       LOGU_OUTPUT_IF(logu::severity::none, tagname, condition)
+#define LOGU_DEBUG_IF_(tagname, condition) LOGU_INTERNAL_OUTPUT_IF(logu::severity::debug, tagname, condition)
+#define LOGU_INFO_IF_(tagname, condition)  LOGU_INTERNAL_OUTPUT_IF(logu::severity::info, tagname, condition)
+#define LOGU_WARN_IF_(tagname, condition)  LOGU_INTERNAL_OUTPUT_IF(logu::severity::warn, tagname, condition)
+#define LOGU_ERROR_IF_(tagname, condition) LOGU_INTERNAL_OUTPUT_IF(logu::severity::error, tagname, condition)
+#define LOGU_IF_(tagname, condition)       LOGU_INTERNAL_OUTPUT_IF(logu::severity::none, tagname, condition)
 
 // Get logger instance
-#define LOGU_GET(tagname)        logu::internal::logger_holder::get(tagname)
-#define LOGU_GET_STATIC(tagname) logu::internal::static_logger_holder<LOGU_HASH(tagname)>::get(tagname)
-#define LOGU_GET_DEFAULT()       LOGU_GET_STATIC(LOGU_DEFAULT_TAGNAME)
+#define LOGU_LOGGER(tagname)        logu::internal::logger_holder::get(tagname)
+#define LOGU_LOGGER_STATIC(tagname) logu::internal::static_logger_holder<LOGU_HASH(tagname)>::get(tagname)
+#define LOGU_DEFAULT_LOGGER()       LOGU_LOGGER_STATIC("")
 
 // Get function name (e.g. "void myclass::myfunc()")
 #ifdef _MSC_VER
@@ -77,33 +77,31 @@
 // Internal macro
 //
 
-#define LOGU_DEFAULT_TAGNAME ""
-
 // clang-format off
 
-#define LOGU_OUTPUT_IF(severity, tagname, conditional) if (!(conditional)) {;} else LOGU_OUTPUT(severity, tagname)
+#define LOGU_INTERNAL_OUTPUT_IF(severity, tagname, conditional) if (!(conditional)) {;} else LOGU_INTERNAL_OUTPUT(severity, tagname)
 
-#define LOGU_OUTPUT(severity, tagname)    \
-    LOGU_SHOULD_OUTPUT(severity, tagname) \
-        LOGU_GET_STATIC(tagname) += logu::record(severity, tagname, LOGU_FILE(), LOGU_FUNC(), __LINE__)
+#define LOGU_INTERNAL_OUTPUT(severity, tagname)    \
+    LOGU_INTERNAL_SHOULD_OUTPUT(severity, tagname) \
+        LOGU_LOGGER_STATIC(tagname) += logu::record(severity, tagname, LOGU_FILE(), LOGU_FUNC(), __LINE__)
 
 #if defined(LOGU_DISABLE_LOGGING)
 
 #if defined(_MSC_VER)
-#define LOGU_SHOULD_OUTPUT(severity, tagname) \
+#define LOGU_INTERNAL_SHOULD_OUTPUT(severity, tagname) \
     __pragma(warning(push))                   \
     __pragma(warning(disable : 4127))         \
     if (true) { }                             \
     else __pragma(warning(pop))
 #else // _MSC_VAR
-#define LOGU_SHOULD_OUTPUT(severity, tagname) \
+#define LOGU_INTERNAL_SHOULD_OUTPUT(severity, tagname) \
     if (true) { } else
 #endif // _MSC_VAR
 
 #else // LOGU_DISABLE_LOGGING
 
-#define LOGU_SHOULD_OUTPUT(severity, tagname)         \
-    if (!LOGU_GET_STATIC(tagname).should_output(severity)) { } else
+#define LOGU_INTERNAL_SHOULD_OUTPUT(severity, tagname)         \
+    if (!LOGU_LOGGER_STATIC(tagname).should_output(severity)) { } else
 
 #endif // LOGU_DISABLE_LOGGING
 

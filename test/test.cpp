@@ -97,7 +97,7 @@ TEST_F(LoguTest, OutputFormat)
     constexpr auto name = "OutputFormat";
     std::string str;
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -113,7 +113,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -128,7 +128,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("OutputFormat | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -143,7 +143,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp | \\S+ | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -158,7 +158,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp@\\d+ | [^@]+@\\d+\\ | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -173,7 +173,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp@\\d+ | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -188,7 +188,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("[^@]+@\\d+ | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -203,7 +203,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("\\d+ | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, true)
@@ -218,7 +218,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, true)
@@ -235,7 +235,7 @@ TEST_F(LoguTest, OutputFormat)
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} | test")));
 
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, true)
@@ -259,7 +259,7 @@ TEST_F(LoguTest, CopyLogger)
     constexpr auto to = "CopyLoggerTo";
     std::string str;
 
-    LOGU_GET_DEFAULT()
+    LOGU_DEFAULT_LOGGER()
         .set_severity(logu::severity::warn, logu::severity::error)
         .set_enable(false)
         .set_formatter(
@@ -270,7 +270,7 @@ TEST_F(LoguTest, CopyLogger)
                 .set_option(logu::formatter::option::file, false)
                 .set_option(logu::formatter::option::func, false)
                 .set_option(logu::formatter::option::tagname, false));
-    LOGU_GET(to).copy_from(LOGU_GET_DEFAULT());
+    LOGU_LOGGER(to).copy_from(LOGU_DEFAULT_LOGGER());
 
     testing::internal::CaptureStdout();
     LOGU_DEBUG_(to) << "test";
@@ -289,7 +289,7 @@ TEST_F(LoguTest, CopyLogger)
     str = testing::internal::GetCapturedStdout();
     EXPECT_EQ(0, str.length());
 
-    LOGU_GET(to).set_enable(true);
+    LOGU_LOGGER(to).set_enable(true);
 
     testing::internal::CaptureStdout();
     LOGU_DEBUG_(to) << "test";
@@ -308,7 +308,7 @@ TEST_F(LoguTest, CopyLogger)
     str = testing::internal::GetCapturedStdout();
     EXPECT_EQ("test\n", str);
 
-    LOGU_GET(to).set_severity(logu::severity::debug, logu::severity::info);
+    LOGU_LOGGER(to).set_severity(logu::severity::debug, logu::severity::info);
 
     testing::internal::CaptureStdout();
     LOGU_DEBUG_(to) << "test";
@@ -331,7 +331,7 @@ TEST_F(LoguTest, CopyLogger)
 TEST_F(LoguTest, Format)
 {
     constexpr auto name = "Format";
-    LOGU_GET(name)
+    LOGU_LOGGER(name)
         .set_formatter(
             logu::formatter()
                 .set_option(logu::formatter::option::datetime, false)
@@ -349,7 +349,7 @@ TEST_F(LoguTest, Format)
 TEST_F(LoguTest, MeasureOverheadOutput)
 {
     constexpr auto name = "MeasureOverhead";
-    LOGU_GET(name).set_severity(logu::severity::error);
+    LOGU_LOGGER(name).set_severity(logu::severity::error);
     testing::internal::CaptureStdout();
     for (int i = 0; i < 1000; ++i) {
         LOGU_ERROR_(name) << "test";
@@ -360,7 +360,7 @@ TEST_F(LoguTest, MeasureOverheadOutput)
 TEST_F(LoguTest, MeasureOverheadSkip)
 {
     constexpr auto name = "MeasureOverhead";
-    LOGU_GET(name).set_severity(logu::severity::error);
+    LOGU_LOGGER(name).set_severity(logu::severity::error);
     testing::internal::CaptureStdout();
     for (int i = 0; i < 1000000; ++i) {
         LOGU_DEBUG_(name) << "test";
@@ -378,7 +378,7 @@ struct test_formatter : public logu::formatter_base {
 TEST_F(LoguTest, CustomFormatter)
 {
     constexpr auto name = "CustomFormatter";
-    LOGU_GET(name).set_formatter(test_formatter());
+    LOGU_LOGGER(name).set_formatter(test_formatter());
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     std::string str = testing::internal::GetCapturedStdout();
@@ -389,7 +389,7 @@ TEST_F(LoguTest, GetInstance)
 {
     std::string str;
     std::string name = "GetInstance";
-    LOGU_GET(name.c_str()).set_severity(logu::severity::warn);
+    LOGU_LOGGER(name.c_str()).set_severity(logu::severity::warn);
 
     testing::internal::CaptureStdout();
     LOGU_INFO_("GetInstance") << "test";
@@ -404,7 +404,7 @@ TEST_F(LoguTest, GetInstance)
 
 TEST_F(LoguTest, Var)
 {
-    LOGU_GET_DEFAULT()
+    LOGU_DEFAULT_LOGGER()
         .set_enable(true)
         .set_severity(logu::severity::debug)
         .set_formatter(
