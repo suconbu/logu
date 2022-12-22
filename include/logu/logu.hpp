@@ -52,34 +52,6 @@
 #define LOGU_ERROR_IF_(tagname, condition) LOGU_OUTPUT_IF(logu::severity::error, tagname, condition)
 #define LOGU_IF_(tagname, condition)       LOGU_OUTPUT_IF(logu::severity::none, tagname, condition)
 
-// Print variable
-
-// clang-format off
-#define LOGU_PRINT_DEBUG(...) do { LOGU_DEBUG << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_INFO(...)  do { LOGU_INFO << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_WARN(...)  do { LOGU_WARN << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_ERROR(...) do { LOGU_ERROR << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT(...)       do { LOGU << LOGU_VARSTR(__VA_ARGS__); } while(false)
-
-#define LOGU_PRINT_DEBUG_(tagname, ...) do { LOGU_DEBUG_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_INFO_(tagname, ...)  do { LOGU_INFO_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_WARN_(tagname, ...)  do { LOGU_WARN_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_ERROR_(tagname, ...) do { LOGU_ERROR_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_(tagname, ...)       do { LOGU_(tagname) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-
-#define LOGU_PRINT_DEBUG_IF(condition, ...) do { LOGU_DEBUG_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_INFO_IF(condition, ...)  do { LOGU_INFO_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_WARN_IF(condition, ...)  do { LOGU_WARN_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_ERROR_IF(condition, ...) do { LOGU_ERROR_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_IF(condition, ...)       do { LOGU_IF(condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-
-#define LOGU_PRINT_DEBUG_IF_(tagname, condition, ...) do { LOGU_DEBUG_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_INFO_IF_(tagname, condition, ...)  do { LOGU_INFO_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_WARN_IF_(tagname, condition, ...)  do { LOGU_WARN_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_ERROR_IF_(tagname, condition, ...) do { LOGU_ERROR_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-#define LOGU_PRINT_IF_(tagname, condition, ...)       do { LOGU_IF_(tagname, condition) << LOGU_VARSTR(__VA_ARGS__); } while(false)
-// clang-format on
-
 // Get logger instance
 #define LOGU_GET(tagname)        logu::internal::logger_holder::get(tagname)
 #define LOGU_GET_STATIC(tagname) logu::internal::static_logger_holder<LOGU_HASH(tagname)>::get(tagname)

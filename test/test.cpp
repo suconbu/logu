@@ -98,14 +98,15 @@ TEST_F(LoguTest, OutputFormat)
     std::string str;
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::line, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, false));
 
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
@@ -113,130 +114,139 @@ TEST_F(LoguTest, OutputFormat)
     EXPECT_TRUE(std::regex_search(str, std::regex("test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::line, false)
-                           .set_option(logu::formatter::option::tagname, true));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, true));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("OutputFormat | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, true)
-                           .set_option(logu::formatter::option::func, true)
-                           .set_option(logu::formatter::option::line, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, true)
+                .set_option(logu::formatter::option::func, true)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp | \\S+ | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, true)
-                           .set_option(logu::formatter::option::func, true)
-                           .set_option(logu::formatter::option::line, true)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, true)
+                .set_option(logu::formatter::option::func, true)
+                .set_option(logu::formatter::option::line, true)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp@\\d+ | [^@]+@\\d+\\ | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, true)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::line, true)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, true)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, true)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp@\\d+ | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, true)
-                           .set_option(logu::formatter::option::line, true)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, true)
+                .set_option(logu::formatter::option::line, true)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("[^@]+@\\d+ | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, true)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::line, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, true)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("\\d+ | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, true)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::line, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, true)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, true)
-                           .set_option(logu::formatter::option::datetime_year, false)
-                           .set_option(logu::formatter::option::datetime_microsecond, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::line, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, true)
+                .set_option(logu::formatter::option::datetime_year, false)
+                .set_option(logu::formatter::option::datetime_microsecond, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
     EXPECT_TRUE(std::regex_search(str, std::regex("\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} | test")));
 
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, true)
-                           .set_option(logu::formatter::option::datetime_year, false)
-                           .set_option(logu::formatter::option::datetime_microsecond, true)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::line, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, true)
+                .set_option(logu::formatter::option::datetime_year, false)
+                .set_option(logu::formatter::option::datetime_microsecond, true)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
@@ -252,13 +262,14 @@ TEST_F(LoguTest, CopyLogger)
     LOGU_GET_DEFAULT()
         .set_severity(logu::severity::warn, logu::severity::error)
         .set_enable(false)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::tagname, false));
     LOGU_GET(to).copy_from(LOGU_GET_DEFAULT());
 
     testing::internal::CaptureStdout();
@@ -321,13 +332,14 @@ TEST_F(LoguTest, Format)
 {
     constexpr auto name = "Format";
     LOGU_GET(name)
-        .set_formatter(logu::formatter()
-                           .set_option(logu::formatter::option::datetime, false)
-                           .set_option(logu::formatter::option::severity, false)
-                           .set_option(logu::formatter::option::threadid, false)
-                           .set_option(logu::formatter::option::file, false)
-                           .set_option(logu::formatter::option::func, false)
-                           .set_option(logu::formatter::option::tagname, false));
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, false)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::tagname, false));
     testing::internal::CaptureStdout();
     LOGU_(name).format("%d 0x%04X %.3f %s", 1, 0xFFFFu, 3.141592653589793, "none none none");
     std::string str = testing::internal::GetCapturedStdout();
@@ -390,7 +402,7 @@ TEST_F(LoguTest, GetInstance)
     EXPECT_NE(0, str.length());
 }
 
-TEST_F(LoguTest, Print)
+TEST_F(LoguTest, Var)
 {
     LOGU_GET_DEFAULT()
         .set_enable(true)
@@ -411,31 +423,31 @@ TEST_F(LoguTest, Print)
     std::string v2 = "abc";
 
     testing::internal::CaptureStdout();
-    LOGU_PRINT(v1, v2);
+    LOGU << LOGU_VARSTR(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "----- | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_PRINT_DEBUG(v1, v2);
+    LOGU_DEBUG << LOGU_VARSTR(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "DEBUG | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_PRINT_INFO(v1, v2);
+    LOGU_INFO << LOGU_VARSTR(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "INFO  | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_PRINT_WARN(v1, v2);
+    LOGU_WARN << LOGU_VARSTR(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "WARN  | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
 
     testing::internal::CaptureStdout();
-    LOGU_PRINT_ERROR(v1, v2);
+    LOGU_ERROR << LOGU_VARSTR(v1, v2);
     str = testing::internal::GetCapturedStdout();
     expect = "ERROR | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
