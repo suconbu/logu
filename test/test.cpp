@@ -146,7 +146,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_match(str, std::regex("test\\.cpp \\| \\S+ \\| test\\n")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("test\\.cpp \\| .+ \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
