@@ -486,15 +486,24 @@ private:
 
 class logger : logu::internal::noncopyable {
 public:
-    logger(const char* tagname)
-        : tagname_(tagname)
+    logger(const char* tagname, logger* parent = nullptr)
+        : parent_(parent)
+        , tagname_(tagname)
     {
+        if (parent != nullptr) {
+            handlers_ = parent->handlers_;
+            formatter_ = parent->formatter_;
+            min_severity_ptr_ = parent->min_severity_ptr_;
+            max_severity_ptr_ = parent->max_severity_ptr_;
+            enable_logging_ptr_ = parent->enable_logging_ptr_;
+        } else {
 #if defined(LOGU_ENABLE_PLATFORM_LOGGER_WINDOWS) || defined(LOGU_ENABLE_PLATFORM_LOGGER_ANDROID) || defined(LOGU_ENABLE_PLATFORM_LOGGER_LINUX)
-        void platform_logger(const logu::record& record, const char* str);
-        set_handler(std::cout, platform_logger);
+            void platform_logger(const logu::record& record, const char* str);
+            set_handler(std::cout, platform_logger);
 #else
-        set_handler(std::cout);
+            set_handler(std::cout);
 #endif
+        }
     }
 
     logger() = delete;
@@ -505,24 +514,28 @@ public:
         if (formatter_) {
             const auto str = formatter_->format(record);
             for (auto& h : handlers_) {
-                h.output(record, str.c_str());
+                h->output(record, str.c_str());
             }
         }
     }
 
     bool should_output(logu::severity severity) const
     {
-        return enable_logging_ && (min_severity_ <= severity) && (severity <= max_severity_);
+        return *enable_logging_ptr_ && (*min_severity_ptr_ <= severity) && (severity <= *max_severity_ptr_);
     }
 
-    void copy_from(const logu::logger& rhs)
+    logger& copy_from(const logu::logger& rhs)
     {
         std::lock_guard<std::mutex> lock(mtx_);
         handlers_ = rhs.handlers_;
         formatter_ = rhs.formatter_;
         min_severity_ = rhs.min_severity_;
         max_severity_ = rhs.max_severity_;
+        min_severity_ptr_ = rhs.min_severity_ptr_;
+        max_severity_ptr_ = rhs.max_severity_ptr_;
         enable_logging_ = rhs.enable_logging_;
+        enable_logging_ptr_ = rhs.enable_logging_ptr_;
+        return *this;
     }
 
     template <typename... Args>
@@ -547,12 +560,15 @@ public:
         std::lock_guard<std::mutex> lock(mtx_);
         min_severity_ = min_severity;
         max_severity_ = max_severity;
+        min_severity_ptr_ = &min_severity_;
+        max_severity_ptr_ = &max_severity_;
         return *this;
     }
 
     logger& set_enable(bool enable)
     {
         enable_logging_ = enable;
+        enable_logging_ptr_ = &enable_logging_;
         return *this;
     }
 
@@ -600,25 +616,29 @@ private:
     };
 
 private:
+    logger* parent_ = nullptr;
     std::string tagname_;
-    std::vector<handler> handlers_;
+    std::vector<std::shared_ptr<handler>> handlers_;
     std::shared_ptr<logu::formatter_base> formatter_ = std::make_shared<logu::formatter>();
     logu::severity min_severity_ = logu::severity::debug;
     logu::severity max_severity_ = logu::severity::none;
+    logu::severity* min_severity_ptr_ = &min_severity_;
+    logu::severity* max_severity_ptr_ = &max_severity_;
     bool enable_logging_ = true;
+    bool* enable_logging_ptr_ = &enable_logging_;
     std::mutex mtx_;
 
     template <typename First, typename... Args>
     void set_handler_internal(First&& first, Args&&... args)
     {
-        handlers_.emplace_back(first);
+        handlers_.emplace_back(std::make_shared<handler>(first));
         set_handler_internal(std::forward<Args>(args)...);
     }
 
     template <typename First>
     void set_handler_internal(First&& first)
     {
-        handlers_.emplace_back(first);
+        handlers_.emplace_back(std::make_shared<handler>(first));
     }
 
     void set_handler_internal() { }
@@ -649,7 +669,8 @@ namespace internal {
             if (itr != instances_.end()) {
                 return *itr->second;
             } else {
-                return *(instances_[tagname] = std::unique_ptr<logu::logger>(new logu::logger(tagname)));
+                logu::logger* parent_logger = (*tagname != 0) ? &logger_holder::get("", false) : nullptr;
+                return *(instances_[tagname] = std::unique_ptr<logu::logger>(new logu::logger(tagname, parent_logger)));
             }
         }
     };

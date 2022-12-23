@@ -8,9 +8,14 @@
 
 // #define TEST_ENABLE_OUTPUT_TO_STDOUT
 
+logu::logger g_default_logger("");
+
 class LoguTest : public ::testing::Test {
 protected:
-    virtual void SetUp() { }
+    virtual void SetUp()
+    {
+        LOGU_DEFAULT_LOGGER().copy_from(g_default_logger);
+    }
     virtual void TearDown() { }
 
     std::string GetPattern(logu::severity severity)
@@ -21,17 +26,17 @@ protected:
     std::string GetPattern(logu::severity severity, std::string name)
     {
         std::string s;
-        s += "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} | ";
+        s += "\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} \\| ";
         std::string severity_str = (severity == logu::severity::debug) ? "DEBUG" :
             (severity == logu::severity::info)                         ? "INFO " :
             (severity == logu::severity::warn)                         ? "WARN " :
             (severity == logu::severity::error)                        ? "ERROR" :
                                                                          "-----";
-        s += "" + severity_str + " | ";
-        s += "\\d+ | "; // threadid
-        s += "[^@]+@\\d+ | "; // func@line
+        s += "" + severity_str + " \\| ";
+        s += "\\d+ \\| "; // threadid
+        s += "[^@]+@\\d+ \\| "; // func@line
         if (!name.empty()) {
-            s += "[" + name + "] "; // tagname
+            s += "\\[" + name + "\\] "; // tagname
         }
         return s;
     }
@@ -44,52 +49,52 @@ TEST_F(LoguTest, Severity)
     testing::internal::CaptureStdout();
     LOGU_DEBUG << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::debug) + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::debug) + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_INFO << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::info) + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::info) + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_WARN << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::warn) + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::warn) + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_ERROR << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::error) + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::error) + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::none) + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::none) + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_DEBUG_("name") << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::debug, "name") + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::debug, "name") + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_INFO_("name") << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::info, "name") + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::info, "name") + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_WARN_("name") << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::warn, "name") + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::warn, "name") + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_ERROR_("name") << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::error, "name") + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::error, "name") + "test\\n")));
 
     testing::internal::CaptureStdout();
     LOGU_("name") << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex(GetPattern(logu::severity::none, "name") + "test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex(GetPattern(logu::severity::none, "name") + "test\\n")));
 }
 
 TEST_F(LoguTest, OutputFormat)
@@ -111,7 +116,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -126,7 +131,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("OutputFormat | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("\\[OutputFormat\\] test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -141,7 +146,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp | \\S+ | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("test\\.cpp \\| \\S+ \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -156,7 +161,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp@\\d+ | [^@]+@\\d+\\ | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("test\\.cpp@\\d+ \\| [^@]+@\\d+\\ \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -171,7 +176,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("test\\.cpp@\\d+ | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("test\\.cpp@\\d+ \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -186,7 +191,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("[^@]+@\\d+ | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("[^@]+@\\d+ \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -201,7 +206,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("\\d+ | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("\\d+ \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -216,7 +221,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("\\d{4}-\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -233,7 +238,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{3} \\| test\\n")));
 
     LOGU_LOGGER(name)
         .set_formatter(
@@ -250,7 +255,7 @@ TEST_F(LoguTest, OutputFormat)
     testing::internal::CaptureStdout();
     LOGU_(name) << "test";
     str = testing::internal::GetCapturedStdout();
-    EXPECT_TRUE(std::regex_search(str, std::regex("\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} | test")));
+    EXPECT_TRUE(std::regex_match(str, std::regex("\\d{2}-\\d{2} \\d{2}:\\d{2}:\\d{2}\\.\\d{6} \\| test\\n")));
 }
 
 TEST_F(LoguTest, CopyLogger)
@@ -451,4 +456,58 @@ TEST_F(LoguTest, Var)
     str = testing::internal::GetCapturedStdout();
     expect = "ERROR | " + expect_base;
     EXPECT_STREQ(expect.c_str(), str.c_str());
+}
+
+TEST_F(LoguTest, InheritDefault)
+{
+    std::string str;
+    const auto get_pattern = [](logu::severity severity, const char* tagname) {
+        std::string pattern;
+        std::string severity_str = (severity == logu::severity::debug) ? "DEBUG" :
+            (severity == logu::severity::info)                         ? "INFO " :
+            (severity == logu::severity::warn)                         ? "WARN " :
+            (severity == logu::severity::error)                        ? "ERROR" :
+                                                                         "-----";
+        pattern += "" + severity_str + " \\| ";
+        if (*tagname != 0) {
+            pattern += "\\[";
+            pattern += tagname;
+            pattern += "\\] "; // tagname
+        }
+        return pattern;
+    };
+
+    LOGU_DEFAULT_LOGGER()
+        .set_enable(true)
+        .set_severity(logu::severity::info)
+        .set_formatter(
+            logu::formatter()
+                .set_option(logu::formatter::option::datetime, false)
+                .set_option(logu::formatter::option::severity, true)
+                .set_option(logu::formatter::option::threadid, false)
+                .set_option(logu::formatter::option::file, false)
+                .set_option(logu::formatter::option::func, false)
+                .set_option(logu::formatter::option::line, false)
+                .set_option(logu::formatter::option::tagname, true));
+
+    // Using logger of inherited default logger
+
+    testing::internal::CaptureStdout();
+    LOGU_DEBUG_("inherit") << "DEBUG";
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(str.empty());
+
+    testing::internal::CaptureStdout();
+    LOGU_INFO_("inherit") << "INFO";
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_match(str, std::regex(get_pattern(logu::severity::info, "inherit") + "INFO\\n")));
+
+    // Override severity
+    LOGU_LOGGER("inherit")
+        .set_severity(logu::severity::debug);
+
+    testing::internal::CaptureStdout();
+    LOGU_DEBUG_("inherit") << "DEBUG";
+    str = testing::internal::GetCapturedStdout();
+    EXPECT_TRUE(std::regex_match(str, std::regex(get_pattern(logu::severity::debug, "inherit") + "DEBUG\\n")));
 }
